@@ -1,0 +1,33 @@
+name: build-watcher
+
+# Builds the photo-import watcher image (immich-go + watch-import.sh) and
+# publishes it to GHCR. Image: ghcr.io/<owner>/photo-import-watcher:latest
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'Dockerfile'
+      - 'watch-import.sh'
+      - '.github/workflows/watcher.yml'
+  workflow_dispatch: {}
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/photo-import-watcher:latest

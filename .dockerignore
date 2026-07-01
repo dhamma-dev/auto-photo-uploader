@@ -1,0 +1,6 @@
+.git
+.github
+usb-passthrough-test
+docker-compose.yml
+*.md
+.gitignore
