@@ -94,11 +94,12 @@ Images publish to GHCR (`ghcr.io/dhamma-dev/*`) via GitHub Actions on push to
 to private — make the package public or add a Portainer registry credential.
 
 ## Current status
-Pivoted to USB Copy + unprivileged folder-watch watcher; watcher implemented and
-publishing to GHCR. Next: configure the USB Copy task (Data copy, run on connect,
-dest `incoming/`), fill the watcher stack's Immich URL/API key + ntfy topic,
-deploy, and run an end-to-end test with a card (confirm both pushes fire and the
-batch is deleted only after the hash verify passes).
+DEPLOYED and working end-to-end (2026-07-01): USB Copy → unprivileged
+folder-watch watcher → immich-go upload → hash-verified "safe to wipe". The full
+Phase 1 trust pipeline is live. Maintenance knobs: immich-go version is pinned in
+the Dockerfile (bump the ARG + push if an Immich server upgrade breaks uploads);
+raise `SETTLE_SECONDS` if a large card ever gets grabbed mid-copy. Next up is
+Phase 2 (voice-memo metadata), not started.
 
 ## Phase 2 (not started): voice-memo metadata
 Record voice memos while shooting; transcribe locally (Whisper); align memo
