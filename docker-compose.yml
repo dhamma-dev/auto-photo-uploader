@@ -1,0 +1,79 @@
+name: photo-import
+
+# ---------------------------------------------------------------------------
+# Two containers:
+#   watcher  - detects an inserted SD card, copies it off, uploads to Immich,
+#              pings your phone when the card is safe to wipe.
+#   stacker  - periodically collapses each RAW+JPEG pair into a single asset.
+#
+# Values you must fill in are marked REPLACE_ME. See notes at the bottom.
+# ---------------------------------------------------------------------------
+
+services:
+  watcher:
+    build: .
+    container_name: photo-watcher
+    restart: unless-stopped
+
+    # Synology's Docker won't pass a hot-plugged card into a container without
+    # this. Privileged maps host devices in; rshared propagation makes a card
+    # mounted AFTER the container starts actually show up inside it.
+    privileged: true
+    volumes:
+      - type: bind
+        source: /volumeUSB1          # <- USB port 1 on the NAS. Other ports are
+        target: /mnt/usb             #    /volumeUSB2, etc. Add more binds if needed.
+        bind:
+          propagation: rshared
+      # Persistent staging area (mirrors your existing docker/projects layout)
+      - /volume1/docker/projects/photo-import/staging:/staging
+
+    environment:
+      USB_MOUNT: /mnt/usb
+      STAGING: /staging
+      POLL_SECONDS: "5"
+
+      # The immich CLI reads these two directly:
+      IMMICH_INSTANCE_URL: "http://REPLACE_ME_NAS_IP:2283/api"
+      IMMICH_API_KEY: "REPLACE_ME_IMMICH_API_KEY"
+
+      # Push notifications. Easiest: pick a random, unguessable topic on
+      # ntfy.sh and install the ntfy app on your phone. Or self-host ntfy.
+      NTFY_URL: "https://ntfy.sh/REPLACE_ME_RANDOM_TOPIC"
+
+      TZ: "America/Vancouver"
+
+  stacker:
+    image: ghcr.io/tenekev/immich-auto-stack:latest
+    container_name: photo-stacker
+    restart: unless-stopped
+    environment:
+      API_URL: "http://REPLACE_ME_NAS_IP:2283/api"
+      API_KEY: "REPLACE_ME_IMMICH_API_KEY"
+      # Collapse newly-uploaded RAW+JPEG pairs on a schedule.
+      # (Confirm the exact env var names against the image's README — some
+      #  forks use RUN_MODE/CRON_INTERVAL instead.)
+      CRON_EXPRESSION: "*/15 * * * *"
+      SKIP_PREVIOUS: "true"
+      TZ: "America/Vancouver"
+
+# ---------------------------------------------------------------------------
+# NOTES
+#
+# 1. Immich API key: Immich web UI -> Account Settings -> API Keys -> New.
+#
+# 2. NAS IP: use the NAS's LAN IP (e.g. 192.168.1.20). Alternatively, join this
+#    project to your existing Immich Docker network and use the container name
+#    (http://immich_server:2283/api) instead of an IP.
+#
+# 3. Your Sony files are GSHxxxxx.arw + GSHxxxxx.jpg. The stacker's default
+#    rule groups by base filename and promotes the .jpg as the shown asset,
+#    with the .arw tucked behind it. No custom config needed.
+#
+# 4. Deploy: on Synology, either import as a Container Manager "Project", or
+#    (more reliable for the rshared propagation) SSH in and run:
+#        cd /volume1/docker/projects/photo-import && docker compose up -d --build
+#
+# 5. Nothing here auto-formats the card. You wipe it yourself, only after the
+#    "Safe to wipe" push arrives. That is the whole point.
+# ---------------------------------------------------------------------------

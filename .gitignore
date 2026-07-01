@@ -1,0 +1,9 @@
+# Secrets & runtime state — never commit
+.env
+*.env
+!.env.example
+staging/
+**/.state/
+
+# macOS
+.DS_Store
