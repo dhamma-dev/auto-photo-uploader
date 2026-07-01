@@ -1,0 +1,32 @@
+name: build-usb-probe
+
+# Builds the USB passthrough probe image and publishes it to GHCR so the NAS can
+# pull it via a Portainer stack. Image: ghcr.io/<owner>/photo-usb-probe:latest
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'usb-passthrough-test/**'
+      - '.github/workflows/usb-probe.yml'
+  workflow_dispatch: {}
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./usb-passthrough-test
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/photo-usb-probe:latest

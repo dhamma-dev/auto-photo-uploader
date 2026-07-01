@@ -1,0 +1,33 @@
+# ---------------------------------------------------------------------------
+# USB passthrough test — Portainer stack (Stacks -> Add stack -> Web editor).
+#
+# image: is prefilled with your GHCR namespace (dhamma-dev, from your git config).
+# If the GHCR package is private, either make it public after the first publish or
+# add a pull credential in Portainer first (Registries).
+#
+# HOW TO READ THE TEST (watch this stack's container logs in Portainer):
+#   Step 1 (static):   Insert a card, confirm on the NAS shell `ls /volumeUSB1`,
+#                      THEN deploy this stack. Logs should list the card's files.
+#   Step 2 (hot-plug): With the stack still running, pull the card and re-insert
+#                      it. Logs should show it vanish, then reappear.
+#
+#   Both steps work                 -> passthrough is viable; build the watcher on it.
+#   Step 1 works, Step 2 does not    -> rshared propagation NOT honored
+#                                       -> use Synology USB Copy for ingest instead.
+#   Even Step 1 shows nothing        -> wrong port/path; check `ls /volumeUSB*`.
+# ---------------------------------------------------------------------------
+services:
+  usb-probe:
+    image: ghcr.io/dhamma-dev/photo-usb-probe:latest
+    container_name: usb-probe
+    restart: unless-stopped
+    privileged: true                 # Synology needs this to map host USB devices in
+    environment:
+      USB_MOUNT: /mnt/usb
+      INTERVAL: "3"
+    volumes:
+      - type: bind
+        source: /volumeUSB1          # USB port 1 (use /volumeUSB2, etc. for others)
+        target: /mnt/usb
+        bind:
+          propagation: rshared       # the whole point of the test
