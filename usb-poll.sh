@@ -2,10 +2,10 @@
 # ---------------------------------------------------------------------------
 # usb-poll.sh — host-side ingest for the photo-import pipeline.
 #
-# Runs on the Synology HOST via DSM Task Scheduler (user: root, every ~2 min).
-# Detects any inserted camera card mounted under /volumeUSB* and does a
-# CHECKSUM-VERIFIED copy of it into incoming/ for the (unprivileged) watcher
-# container to upload + hash-verify.
+# Runs on the Synology HOST on a schedule (cron or DSM Task Scheduler); it is
+# idempotent and flock-guarded, so any interval is safe. Detects any inserted
+# camera card mounted under /volumeUSB* and does a VERIFIED rsync copy of it into
+# incoming/ for the (unprivileged) watcher container to upload + hash-verify.
 #
 # Why host-side: a container can't see hot-plugged USB on this NAS (Docker rejects
 #   the rshared bind — host / isn't a shared mount).
@@ -18,8 +18,9 @@
 # staged in a hidden dir and atomically renamed in, so the watcher only ever sees
 # complete batches.
 #
-# DSM Task Scheduler command (user-defined script, user = root, every 2 min):
-#   bash /volume1/docker/projects/photo-import/usb-poll.sh >> /volume1/docker/projects/photo-import/usb-poll.log 2>&1
+# Deploy: this repo is cloned to /volume1/docker/projects/photo-import/repo/, and a
+# per-minute cron line runs the script (interval is arbitrary thanks to the flock):
+#   */1 * * * * /volume1/docker/projects/photo-import/repo/usb-poll.sh >> /volume1/docker/projects/photo-import/usb-poll.log 2>&1
 # ---------------------------------------------------------------------------
 set -uo pipefail
 
@@ -37,6 +38,9 @@ exec 9>"$LOCK"
 if ! flock -n 9; then
   exit 0
 fi
+
+# We hold the lock, so any leftover .tmp_* is from a killed run — clear it.
+find "$INCOMING" -maxdepth 1 -name '.tmp_*' -exec rm -rf {} + 2>/dev/null || true
 
 # Content signature of a card: sorted (relative path, size) of every file, ignoring
 # Synology @-dirs. Stable per card content, independent of the mount path.
@@ -65,8 +69,10 @@ copy_card() {
   log "new card at $card (${sig:0:12}, ~${count} files) -> $dest"
   rm -rf "$tmp"; mkdir -p "$tmp"
 
-  # Verified copy: rsync whole-file-checksums every transferred file.
-  if ! rsync -a --checksum --no-perms --no-owner --no-group "$card"/ "$tmp"/; then
+  # Verified copy: rsync inherently whole-file-checksums every transferred file and
+  # re-sends on mismatch. No --checksum flag: the dest is always empty, so it would
+  # only force a redundant read pass over the card without changing what's copied.
+  if ! rsync -a --no-perms --no-owner --no-group "$card"/ "$tmp"/; then
     log "rsync FAILED for $card — nothing handed to the watcher"
     rm -rf "$tmp"
     return 1
