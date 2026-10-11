@@ -8,11 +8,13 @@
   :root {
     --bg: #f6f6f4; --card: #fff; --text: #1d1d1b; --muted: #6b6b66; --line: #e3e3de;
     --accent: #2f5bd3; --on-accent: #fff; --ok: #1f7a3d; --ok-bg: #e6f4ea; --bad: #b3261e; --bad-bg: #fce8e6;
+    --warn: #8a5a00; --warn-bg: #fdf1dc;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #161615; --card: #20201e; --text: #ecece8; --muted: #9a9a94; --line: #34342f;
       --accent: #7a9bff; --on-accent: #0d1633; --ok: #6fd28f; --ok-bg: #18301f; --bad: #ff8a80; --bad-bg: #3a1c1a;
+      --warn: #f2c46d; --warn-bg: #352a14;
     }
   }
   * { box-sizing: border-box; }
@@ -22,16 +24,37 @@
   header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; }
   h1 { font-size: 1.35rem; margin: 0; }
   h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 28px 0 10px; }
+  a { color: var(--accent); }
   .pill { font-size: .8rem; padding: 3px 10px; border-radius: 99px; background: var(--card); border: 1px solid var(--line); white-space: nowrap; }
   .pill.ok::before { content: "● "; color: var(--ok); }
   .pill.bad::before { content: "● "; color: var(--bad); }
   .box { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
   .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
   .muted { color: var(--muted); font-size: .9rem; }
-  button { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 10px 18px; cursor: pointer;
-           background: var(--accent); color: var(--on-accent); }
-  button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+  .small { font-size: .82rem; }
+  button, .btn { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 10px 18px; cursor: pointer;
+           background: var(--accent); color: var(--on-accent); text-decoration: none; display: inline-block; }
+  button.secondary, .btn.secondary { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+  button.link { background: none; color: var(--accent); padding: 0; font-weight: 500; font-size: .85rem; }
   button:disabled { opacity: .45; cursor: default; }
+  input[type=text] { font: inherit; width: 100%; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line);
+                     background: var(--bg); color: var(--text); }
+  label.field { display: block; margin-top: 12px; }
+  label.field span { display: block; font-size: .82rem; color: var(--muted); margin-bottom: 4px; }
+  .badge { font-size: .78rem; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+  .badge.ok { background: var(--ok-bg); color: var(--ok); }
+  .badge.new { background: var(--warn-bg); color: var(--warn); }
+  .badge.unknown { border: 1px solid var(--line); color: var(--muted); }
+  .sessions { margin-top: 12px; border-top: 1px solid var(--line); }
+  .session { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .session input { margin-top: 4px; width: 18px; height: 18px; accent-color: var(--accent); flex: none; }
+  .session .main { flex: 1; min-width: 0; }
+  .session .badges { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .chip { font-size: .78rem; padding: 2px 9px; border-radius: 99px; border: 1px dashed var(--line); background: none;
+          color: var(--muted); cursor: pointer; font-weight: 500; }
+  .actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+  details summary { cursor: pointer; }
   .bar { height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; margin: 12px 0 6px; }
   .bar > div { height: 100%; background: var(--accent); transition: width .4s; }
   .bar.indeterminate > div { width: 30%; animation: slide 1.2s ease-in-out infinite; }
@@ -42,11 +65,13 @@
   .steps span.now { color: var(--accent); border-color: var(--accent); font-weight: 600; }
   .result.ok { background: var(--ok-bg); border-color: transparent; }
   .result.bad { background: var(--bad-bg); border-color: transparent; }
+  .result.warn { background: var(--warn-bg); border-color: transparent; }
   .result .big { font-size: 1.15rem; font-weight: 650; }
   .result.ok .big { color: var(--ok); }
   .result.bad .big { color: var(--bad); }
+  .result.warn .big { color: var(--warn); }
+  .note { color: var(--warn); font-size: .9rem; margin-top: 8px; }
   ul.files { margin: 8px 0 0; padding-left: 18px; font: .82rem/1.5 ui-monospace, monospace; max-height: 220px; overflow: auto; }
-  details { margin-top: 10px; }
   pre { font: .75rem/1.4 ui-monospace, monospace; white-space: pre-wrap; word-break: break-all; max-height: 260px; overflow: auto;
         background: var(--bg); padding: 8px; border-radius: 6px; }
   .hist { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; font-size: .9rem; }
@@ -61,23 +86,28 @@
   </header>
   <div id="job"></div>
   <h2>Cards</h2>
-  <div id="cards"><div class="box muted">Loading…</div></div>
+  <div id="cards"><div class="box muted">Reading card…</div></div>
   <h2>Recent imports</h2>
   <div id="history" class="box muted">—</div>
 </main>
+<datalist id="albums"></datalist>
 <script>
-const STEPS = ["scanning", "hashing", "checking", "uploading", "verifying"];
-const STEP_LABEL = {scanning: "List", hashing: "Fingerprint", checking: "Check", uploading: "Upload", verifying: "Verify"};
-let state = {cards: [], job: null};
+const STEP_LABEL = {scanning: "List", hashing: "Fingerprint", checking: "Check", uploading: "Upload",
+                    verifying: "Verify", organizing: "Album & tags"};
+let state = {cards: [], job: null, immichUrl: ""};
+let selection = {};  // card name -> {sessions:Set, album, tags, reread}
 let pollTimer = null;
 
 const $ = id => document.getElementById(id);
-const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const gb = b => b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : (b / 1e6).toFixed(0) + " MB";
-const day = t => new Date(t * 1000).toLocaleDateString(undefined, {month: "short", day: "numeric", year: "numeric"});
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const gb = b => b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : Math.max(0, b / 1e6).toFixed(0) + " MB";
+const n = x => (x || 0).toLocaleString();
+const dayName = d => new Date(d + "T12:00").toLocaleDateString(undefined, {weekday: "short", month: "short", day: "numeric", year: "numeric"});
+const clock = iso => new Date(iso).toLocaleTimeString(undefined, {hour: "numeric", minute: "2-digit"});
 const when = t => new Date(t * 1000).toLocaleString(undefined, {month: "short", day: "numeric", hour: "numeric", minute: "2-digit"});
-const mins = s => s < 90 ? Math.round(s) + "s" : Math.round(s / 60) + " min";
+const dur = s => !isFinite(s) || s < 0 ? "" : s < 90 ? Math.round(s) + " s" : s < 5400 ? Math.round(s / 60) + " min" : (s / 3600).toFixed(1) + " h";
 const running = () => state.job && state.job.status === "running";
+const now = () => Date.now() / 1000;
 
 async function api(path, opts) {
   const r = await fetch(path, opts);
@@ -89,11 +119,12 @@ async function api(path, opts) {
 async function loadOverview() {
   try {
     const o = await api("/api/overview");
-    state.cards = o.cards; state.job = o.job;
+    state.cards = o.cards; state.job = o.job; state.immichUrl = o.immich.url;
     const im = $("immich");
     im.className = "pill " + (o.immich.ok ? "ok" : "bad");
     im.textContent = o.immich.ok ? "Immich connected" : "Immich unreachable";
     im.title = o.immich.ok ? `${o.immich.url} as ${o.immich.user}` : o.immich.error;
+    $("albums").innerHTML = o.albums.map(a => `<option value="${esc(a)}">`).join("");
     renderCards(); renderJob(); renderHistory(o.history);
     if (!o.immich.ok) $("job").insertAdjacentHTML("afterbegin",
       `<div class="box result bad"><div class="big">Can't talk to Immich</div><div class="muted">${esc(o.immich.error)}</div></div>`);
@@ -101,6 +132,35 @@ async function loadOverview() {
   } catch (e) {
     $("cards").innerHTML = `<div class="box">Couldn't load: ${esc(e.message)}</div>`;
   }
+}
+
+// ---- cards & session picker ----
+
+function selFor(card) {
+  if (!selection[card.name]) {
+    // Default: every day that isn't already fully in Immich.
+    const pick = card.sessions.filter(s => s.in_immich < s.shots).map(s => s.date);
+    selection[card.name] = {sessions: new Set(pick), album: "", tags: "", reread: false};
+  }
+  const sel = selection[card.name];
+  for (const d of [...sel.sessions]) if (!card.sessions.some(s => s.date === d)) sel.sessions.delete(d);
+  return sel;
+}
+
+function sessionBadges(s) {
+  if (s.in_immich === s.shots) return `<span class="badge ok">✓ In Immich</span>`;
+  const b = [];
+  if (s.new) b.push(`<span class="badge new">${n(s.new)} new</span>`);
+  if (s.unknown) b.push(`<span class="badge unknown">${n(s.unknown)} not checked yet</span>`);
+  if (s.in_immich) b.push(`<span class="badge ok">${n(s.in_immich)} in Immich</span>`);
+  return b.join("");
+}
+
+function suggestAlbum(card, sel) {
+  const days = card.sessions.filter(s => sel.sessions.has(s.date)).map(s => s.date).sort();
+  if (!days.length) return "";
+  const f = d => new Date(d + "T12:00").toLocaleDateString(undefined, {month: "short", day: "numeric", year: "numeric"});
+  return days.length === 1 ? f(days[0]) : `${f(days[0])} – ${f(days[days.length - 1])}`;
 }
 
 function renderCards() {
@@ -111,65 +171,150 @@ function renderCards() {
     return;
   }
   $("cards").innerHTML = state.cards.map(c => {
-    const range = c.first ? (day(c.first) === day(c.last) ? day(c.first) : `${day(c.first)} – ${day(c.last)}`) : "";
-    return `<div class="box row"><div><strong>${c.files.toLocaleString()} files</strong> · ${gb(c.bytes)}
-      <div class="muted">${esc(range)} · slot ${esc(c.name)}</div></div>
-      <button ${running() ? "disabled" : ""} onclick="startImport('${esc(c.name)}')">Import</button></div>`;
+    if (c.busy) return `<div class="box muted">Card in slot ${esc(c.name)}: import in progress.</div>`;
+    const sel = selFor(c);
+    const picked = c.sessions.filter(s => sel.sessions.has(s.date));
+    const pickedShots = picked.reduce((a, s) => a + s.shots, 0), pickedBytes = picked.reduce((a, s) => a + s.bytes, 0);
+    const head = c.all_in_immich
+      ? `<div class="badge ok" style="display:inline-block;margin-top:6px">✓ Everything on this card is in Immich</div>`
+      : c.remembered ? `<div class="muted small">Seen this card before: only new files need reading.</div>` : "";
+    const sessions = c.sessions.map(s => `
+      <label class="session"><input type="checkbox" ${sel.sessions.has(s.date) ? "checked" : ""} ${running() ? "disabled" : ""}
+          onchange="toggleSession('${esc(c.name)}','${s.date}',this.checked)">
+        <div class="main"><strong>${dayName(s.date)}</strong>
+          <div class="muted small">${clock(s.first)}${s.first !== s.last ? " – " + clock(s.last) : ""} · ${n(s.shots)} shots · ${gb(s.bytes)}</div></div>
+        <div class="badges">${sessionBadges(s)}</div></label>`).join("");
+    const suggestion = suggestAlbum(c, sel);
+    return `<div class="box" data-card="${esc(c.name)}">
+      <div class="row"><div><strong>${n(c.shots)} shots</strong> · ${n(c.files)} files · ${gb(c.bytes)}
+        <div class="muted small">Slot ${esc(c.name)}</div></div>
+        <div><button class="link" onclick="selectAll('${esc(c.name)}',true)">All</button> ·
+             <button class="link" onclick="selectAll('${esc(c.name)}',false)">None</button></div></div>
+      ${head}${c.error ? `<div class="note">${esc(c.error)}</div>` : ""}
+      <div class="sessions">${sessions}</div>
+      <label class="field"><span>Album (optional): new or existing</span>
+        <input type="text" list="albums" value="${esc(sel.album)}" placeholder="${esc(suggestion || "Album name")}"
+               oninput="selection['${esc(c.name)}'].album=this.value"></label>
+      ${suggestion ? `<div class="chips"><button class="chip" onclick="setAlbum('${esc(c.name)}', ${esc(JSON.stringify(suggestion))})">Use “${esc(suggestion)}”</button></div>` : ""}
+      <label class="field"><span>Tags (optional, comma-separated)</span>
+        <input type="text" value="${esc(sel.tags)}" placeholder="e.g. Family, Hiking/Garibaldi"
+               oninput="selection['${esc(c.name)}'].tags=this.value"></label>
+      <div class="actions">
+        <details class="muted small"><summary>Advanced</summary>
+          <label style="display:flex;gap:8px;margin-top:6px"><input type="checkbox" ${sel.reread ? "checked" : ""}
+            onchange="selection['${esc(c.name)}'].reread=this.checked">
+            Re-read every file (ignore remembered fingerprints)</label></details>
+        <button ${running() || !picked.length ? "disabled" : ""} onclick="startImport('${esc(c.name)}')">
+          ${picked.length ? `Import ${n(pickedShots)} shots · ${gb(pickedBytes)}` : "Select a day"}</button>
+      </div></div>`;
   }).join("");
+}
+
+function toggleSession(card, date, on) {
+  const sel = selection[card]; on ? sel.sessions.add(date) : sel.sessions.delete(date); renderCards();
+}
+function selectAll(card, on) {
+  const c = state.cards.find(c => c.name === card);
+  selection[card].sessions = new Set(on ? c.sessions.map(s => s.date) : []); renderCards();
+}
+function setAlbum(card, name) { selection[card].album = name; renderCards(); }
+
+// ---- the running / finished import ----
+
+function progress(j) {
+  const t = now() - (j.phase_started || j.started);
+  if (j.phase === "hashing" && j.hash_bytes) {
+    const rate = j.hashed_bytes / Math.max(1, t);
+    const left = rate > 0 ? (j.hash_bytes - j.hashed_bytes) / rate : NaN;
+    // Files never seen before are probably new, so they'll be read again for upload.
+    const overall = rate > 0 ? left + j.hash_bytes / rate : NaN;
+    return {pct: 100 * j.hashed_bytes / j.hash_bytes,
+            text: `${gb(j.hashed_bytes)} of ${gb(j.hash_bytes)} read` + (dur(left) ? ` · about ${dur(left)} left for this step` : ""),
+            overall};
+  }
+  if (j.phase === "uploading") {
+    const done = j.uploaded + j.upload_errors, total = Math.max(1, j.to_upload);
+    const left = done > 0 ? (t / done) * (total - done) : NaN;
+    return {pct: Math.min(100, 100 * done / total),
+            text: `${n(j.uploaded)} of ${n(j.to_upload)} uploaded` + (j.upload_errors ? ` · ${n(j.upload_errors)} errors` : "")
+                  + (j.already ? ` · ${n(j.already)} already in Immich` : "") + (dur(left) ? ` · about ${dur(left)} left` : ""),
+            overall: left};
+  }
+  return {pct: null, text: "", overall: NaN};
 }
 
 function renderJob() {
   const j = state.job;
-  if (!j) { $("job").innerHTML = ""; return; }
-  const elapsed = ((j.finished || Date.now() / 1000) - j.started);
+  if (!j) { $("job").innerHTML = ""; document.title = "Photo Importer"; return; }
+  const elapsed = (j.finished || now()) - j.started;
+  const where = j.album ? ` → album “${esc(j.album)}”` : "";
   if (j.status === "running") {
-    const idx = STEPS.indexOf(j.phase);
-    const steps = STEPS.map((s, i) => `<span class="${i < idx ? "done" : i === idx ? "now" : ""}">${STEP_LABEL[s]}</span>`).join("");
-    const pct = j.bytes ? Math.min(100, 100 * j.hashed_bytes / j.bytes) : 0;
-    let detail = "", bar = `<div class="bar indeterminate"><div></div></div>`;
-    if (j.phase === "hashing") {
-      const rate = j.hashed_bytes / Math.max(1, elapsed);
-      const left = rate > 0 ? (j.bytes - j.hashed_bytes) / rate : 0;
-      bar = `<div class="bar"><div style="width:${pct}%"></div></div>`;
-      detail = `${gb(j.hashed_bytes)} of ${gb(j.bytes)} · about ${mins(left)} left`;
-    } else if (j.phase === "uploading") {
-      detail = `${j.already.toLocaleString()} already in Immich · ${j.to_upload.toLocaleString()} uploading`;
-    }
-    const out = j.phase === "uploading" && j.uploader_output.length
-      ? `<details><summary class="muted">Uploader output</summary><pre>${esc(j.uploader_output.slice(-15).join("\n"))}</pre></details>` : "";
-    $("job").innerHTML = `<div class="box"><div class="row"><strong>Importing…</strong><span class="muted">${mins(elapsed)}</span></div>
-      <div class="steps">${steps}</div>${bar}<div>${esc(j.message)}</div><div class="muted">${detail}</div>${out}</div>`;
+    const steps = ["scanning", "hashing", "checking", "uploading", "verifying"].concat(j.album || j.tags.length ? ["organizing"] : []);
+    const idx = steps.indexOf(j.phase);
+    const chips = steps.map((s, i) => `<span class="${i < idx ? "done" : i === idx ? "now" : ""}">${STEP_LABEL[s]}</span>`).join("");
+    const p = progress(j);
+    const bar = p.pct === null ? `<div class="bar indeterminate"><div></div></div>` : `<div class="bar"><div style="width:${p.pct}%"></div></div>`;
+    const cancelling = j.cancelling;
+    document.title = `${p.pct === null ? "" : Math.floor(p.pct) + "% · "}${STEP_LABEL[j.phase] || "Importing"} · Photo Importer`;
+    $("job").innerHTML = `<div class="box">
+      <div class="row"><strong>Importing ${n(j.shots)} shots${where}</strong><span class="muted">${dur(elapsed)}</span></div>
+      <div class="steps">${chips}</div>${bar}
+      <div>${esc(j.message)}</div><div class="muted small">${p.text}</div>
+      ${dur(p.overall) ? `<div class="muted small">Whole import: roughly ${dur(p.overall)} to go</div>` : ""}
+      <div class="actions"><span class="muted small">You can close this page; the import keeps running.</span>
+        <button class="secondary" ${cancelling ? "disabled" : ""} onclick="cancelImport()">${cancelling ? "Cancelling…" : "Cancel"}</button></div>
+      ${j.uploader_output.length ? `<details class="small"><summary class="muted">Uploader messages</summary><pre>${esc(j.uploader_output.slice(-15).join("\n"))}</pre></details>` : ""}
+    </div>`;
     return;
   }
-  const ok = j.status === "success";
+  const kind = j.status === "success" ? "ok" : j.status === "cancelled" ? "warn" : "bad";
+  document.title = `${kind === "ok" ? "✓ Done" : kind === "warn" ? "Cancelled" : "✗ Failed"} · Photo Importer`;
   const cardStillIn = state.cards.some(c => c.name === j.card);
-  const missing = j.missing.length
+  const missing = kind === "bad" && j.missing.length
     ? `<div style="margin-top:10px"><strong>Not in Immich:</strong><ul class="files">${j.missing.slice(0, 200).map(f => `<li>${esc(f)}</li>`).join("")}</ul></div>` : "";
-  const out = !ok && j.uploader_output.length
-    ? `<details><summary class="muted">Uploader output</summary><pre>${esc(j.uploader_output.join("\n"))}</pre></details>` : "";
-  const sub = ok
-    ? `${j.already.toLocaleString()} were already there, ${(j.files - j.already).toLocaleString()} uploaded now. You can remove the card.`
-    : `Nothing was deleted or changed on the card.${cardStillIn ? " Try again; files already in Immich are skipped." : ""}`;
-  $("job").innerHTML = `<div class="box result ${ok ? "ok" : "bad"}">
-    <div class="big">${ok ? "✓ " : "✗ "}${esc(j.message)}</div>
-    <div class="muted" style="margin-top:4px">${sub} · ${mins(elapsed)}</div>${missing}${out}
-    ${!ok && cardStillIn ? `<div style="margin-top:12px"><button onclick="startImport('${esc(j.card)}')">Try again</button></div>` : ""}</div>`;
+  const out = kind !== "ok" && j.uploader_output.length
+    ? `<details class="small"><summary class="muted">Uploader messages</summary><pre>${esc(j.uploader_output.join("\n"))}</pre></details>` : "";
+  const sub = {
+    ok: `${n(j.already)} were already there, ${n(j.files - j.already)} uploaded now${where}. You can remove the card.`,
+    warn: `Nothing on the card was changed. Importing again picks up where this left off.`,
+    bad: `Nothing on the card was changed.${cardStillIn ? " Try again; files already in Immich are skipped." : ""}`,
+  }[kind];
+  const link = kind === "ok" ? `<a class="btn" href="${esc(j.album_url || state.immichUrl)}" target="_blank" rel="noopener">Open in Immich</a>` : "";
+  const retry = kind !== "ok" && cardStillIn ? `<button onclick='retry()'>${kind === "warn" ? "Resume" : "Try again"}</button>` : "";
+  $("job").innerHTML = `<div class="box result ${kind}">
+    <div class="big">${{ok: "✓ ", warn: "", bad: "✗ "}[kind]}${esc(j.message)}</div>
+    <div class="muted" style="margin-top:4px">${sub} · ${dur(elapsed)}</div>
+    ${j.organize_error ? `<div class="note">${esc(j.organize_error)}</div>` : ""}${missing}${out}
+    ${link || retry ? `<div class="actions" style="justify-content:flex-start">${link}${retry}</div>` : ""}</div>`;
 }
 
 function renderHistory(h) {
   if (!h.length) { $("history").textContent = "No imports yet."; return; }
   $("history").className = "box";
+  const icon = {success: "✓", cancelled: "–", failed: "✗"};
   $("history").innerHTML = `<div class="hist">${h.map(r => `
-    <span>${r.status === "success" ? "✓" : "✗"}</span>
-    <span>${when(r.started)} · ${r.files.toLocaleString()} files${r.status === "success" ? "" : ` · <span style="color:var(--bad)">${esc(r.message)}</span>`}</span>
-    <span class="muted">${r.status === "success" ? (r.files - r.already).toLocaleString() + " new" : ""}</span>`).join("")}</div>`;
+    <span>${icon[r.status] || "?"}</span>
+    <span>${when(r.started)} · ${n(r.shots || r.files)} ${r.shots ? "shots" : "files"}${r.album ? ` · “${esc(r.album)}”` : ""}${r.status === "success" ? "" : ` · <span style="color:var(--${r.status === "cancelled" ? "warn" : "bad"})">${esc(r.message)}</span>`}</span>
+    <span class="muted">${r.status === "success" ? n(r.files - r.already) + " new" : ""}</span>`).join("")}</div>`;
 }
 
-async function startImport(card) {
+// ---- actions ----
+
+async function post(req) {
   try {
-    state.job = await api("/api/import", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({card})});
+    state.job = await api("/api/import", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(req)});
     renderJob(); renderCards(); startPolling();
   } catch (e) { alert(e.message); loadOverview(); }
+}
+function startImport(card) {
+  const sel = selection[card];
+  post({card, sessions: [...sel.sessions], album: sel.album.trim(),
+        tags: sel.tags.split(",").map(t => t.trim()).filter(Boolean), reread: sel.reread});
+}
+function retry() { post({...state.job.request, reread: false}); }
+async function cancelImport() {
+  if (!confirm("Cancel this import? Files already uploaded stay in Immich.")) return;
+  try { await api("/api/cancel", {method: "POST"}); state.job.cancelling = true; renderJob(); } catch (e) { alert(e.message); }
 }
 
 // Only polls while an import is running AND this tab is visible.
@@ -179,10 +324,10 @@ function startPolling() {
     if (document.hidden) return;
     try { state.job = await api("/api/job"); } catch { return; }
     renderJob();
-    if (!running()) { clearInterval(pollTimer); pollTimer = null; loadOverview(); }
+    if (!running()) { clearInterval(pollTimer); pollTimer = null; selection = {}; loadOverview(); }
   }, 1500);
 }
-document.addEventListener("visibilitychange", () => { if (!document.hidden) loadOverview(); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && !running()) loadOverview(); });
 loadOverview();
 </script>
 </body>

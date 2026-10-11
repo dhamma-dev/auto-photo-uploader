@@ -9,10 +9,12 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from immich import Immich, ImmichError
-from importer import Importer, find_cards
+from importer import Importer
 
 IMMICH_URL = os.environ["IMMICH_URL"].rstrip("/")
 IMMICH_API_KEY = os.environ["IMMICH_API_KEY"]
+# Where your browser reaches Immich, for "Open in Immich" links (if different from IMMICH_URL).
+IMMICH_PUBLIC_URL = os.environ.get("IMMICH_PUBLIC_URL") or IMMICH_URL
 CARDS_DIR = Path(os.environ.get("CARDS_DIR", "/cards"))
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
 HISTORY_LIMIT = int(os.environ.get("HISTORY_LIMIT", "50"))
@@ -26,7 +28,7 @@ if shutil.which("ionice"):
     subprocess.run(["ionice", "-c2", "-n7", "-p", str(os.getpid())], check=False)
 
 immich = Immich(IMMICH_URL, IMMICH_API_KEY)
-importer = Importer(CARDS_DIR, DATA_DIR, immich, IMMICH_URL, IMMICH_API_KEY,
+importer = Importer(CARDS_DIR, DATA_DIR, immich, IMMICH_URL, IMMICH_API_KEY, IMMICH_PUBLIC_URL,
                     HISTORY_LIMIT, UPLOAD_CONCURRENCY, IMMICH_GO)
 app = FastAPI(docs_url=None, redoc_url=None)
 STATIC = Path(__file__).parent / "static"
@@ -34,6 +36,10 @@ STATIC = Path(__file__).parent / "static"
 
 class ImportRequest(BaseModel):
     card: str
+    sessions: list[str] | None = None  # dates (YYYY-MM-DD); None = whole card
+    album: str = ""
+    tags: list[str] = []
+    reread: bool = False  # ignore remembered fingerprints and re-read every file
 
 
 @app.get("/")
@@ -45,12 +51,20 @@ def index():
 def overview():
     """Everything the page needs on load. Touches Immich and the card once per call."""
     try:
-        immich_status = {"ok": True, "user": immich.whoami(), "url": IMMICH_URL}
+        immich_status = {"ok": True, "user": immich.whoami(), "url": IMMICH_PUBLIC_URL}
     except ImmichError as e:
-        immich_status = {"ok": False, "error": str(e), "url": IMMICH_URL}
+        immich_status = {"ok": False, "error": str(e), "url": IMMICH_PUBLIC_URL}
+    cards = importer.cards()
+    albums = []
+    if immich_status["ok"] and any(not c["busy"] for c in cards):
+        try:
+            albums = immich.album_names()
+        except ImmichError:
+            pass
     return {
         "immich": immich_status,
-        "cards": find_cards(CARDS_DIR),
+        "cards": cards,
+        "albums": albums,
         "job": importer.current(),
         "history": importer.history(),
     }
@@ -65,16 +79,15 @@ def job():
 @app.post("/api/import")
 def start_import(req: ImportRequest):
     try:
-        return importer.start(req.card)
+        return importer.start(req.model_dump())
     except RuntimeError as e:
         raise HTTPException(409, str(e))
     except FileNotFoundError as e:
         raise HTTPException(404, str(e))
 
 
-@app.get("/api/imports/{job_id}")
-def get_record(job_id: str):
-    rec = importer.record(job_id)
-    if rec is None:
-        raise HTTPException(404, "No such import")
-    return rec
+@app.post("/api/cancel")
+def cancel():
+    if not importer.cancel():
+        raise HTTPException(409, "No import is running")
+    return {"ok": True}

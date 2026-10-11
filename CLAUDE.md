@@ -65,26 +65,52 @@ resurrect its design.
    times as possible.
 1. Minimal app: detect card → import → verify → result. BUILT 2026-10-11,
    tested locally against a fake Immich/immich-go; awaiting first NUC deploy.
-2. Polish: history, phone-friendly UI, live progress.
+2. Round 2 BUILT 2026-10-11 (tested locally, not yet deployed): cancel/resume,
+   real upload progress + estimates + tab title, remembered cards, sessions by
+   date with partial import, album + tags per import, Open in Immich.
+   Ideas not built yet: "Immich still processing" status, per-import detail
+   page, settings page, health panel, USB readers, AVCHD video.
 3. Later, separately: Lightroom-edited JPEG exports replacing the stacked JPEG;
    voice-memo captioning (Whisper + LLM → XMP sidecars); offsite backup.
 
 ## Files
 - `app/main.py` — FastAPI routes; sets low CPU/IO priority at startup.
-- `app/importer.py` — card scan, the import job (hash → check → immich-go →
-  verify), bounded history in `/data/imports/<id>/`.
-- `app/immich.py` — Immich API (`users/me`, `bulk-upload-check`).
+- `app/media.py` — card scan, capture time (EXIF DateTimeOriginal for JPG/ARW,
+  Sony clip XML for MP4, mtime fallback), shots (RAW+JPEG by path stem),
+  sessions (calendar days of camera-local time).
+- `app/store.py` — SQLite fingerprint store `/data/fingerprints.db`: sha1 +
+  capture time keyed by (SD card hardware CID, path, size, mtime_ns). Capped
+  (300k rows / 365 days). Re-inserting a known card needs no re-read.
+- `app/importer.py` — the job: fingerprint → check → upload missing shots →
+  verify → album/tags. Cancel. Bounded history in `/data/imports/<id>/`.
+- `app/immich.py` — Immich API (users/me, bulk-upload-check, albums, tags).
 - `app/static/index.html` — the whole UI (vanilla JS; polls only while an
   import runs and the tab is visible).
 - `Dockerfile`, `docker-compose.yml` (for the NUC), `.env.example`,
   `.github/workflows/image.yml` (→ `ghcr.io/dhamma-dev/photo-importer`).
 - `host/99-photo-card.rules` — udev rule installed on the NUC.
 
+## How an import works
+- The user picks sessions (days) on the card plus an optional album and tags.
+- Only files without a remembered fingerprint are read. Fingerprints are saved
+  every 25 files, so a cancelled import keeps its progress.
+- immich-go is pointed at a tmpfs folder of symlinks to exactly the selected
+  shots that are missing (whole shots, so RAW+JPEG still stack). It follows the
+  symlinks for content, size and date.
+- Verify = bulk-upload-check again with the same hashes. Album/tags are applied
+  by the app (not immich-go) to every confirmed asset id, including ones that
+  were already in Immich, and only on full success. Status flips to success
+  only after that step, because the page stops following the job when the
+  status changes.
+
 ## immich-go gotchas
 - Always pass `--log-file`: by default it writes a new log in `~/.cache/immich-go/`
   on every run and never cleans them up.
 - `--pause-immich-jobs` defaults to true (pauses Immich's job queue). We pass
   false: we don't touch Immich's state.
+- `--no-ui` prints progress every 500 ms as `\r`-terminated
+  `Assets found: N, Upload errors: E, Uploaded U` lines. We parse these for the
+  progress bar and keep them out of the saved output.
 - Server/key are passed via `IMMICH_GO_UPLOAD_SERVER` / `IMMICH_GO_UPLOAD_API_KEY`
   env vars so the key isn't in the process list.
 - Sony video lives in `PRIVATE/M4ROOT/CLIP`; `THMBNL`/`SUB` are thumbnails or
