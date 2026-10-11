@@ -1,9 +1,10 @@
 # Secrets & runtime state — never commit
 .env
-*.env
 !.env.example
-staging/
-**/.state/
+
+# Python
+__pycache__/
+.venv/
 
 # macOS
 .DS_Store

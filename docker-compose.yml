@@ -1,0 +1,31 @@
+# Runs on the NUC: put this and a filled-in .env in a folder, then
+#   docker compose pull && docker compose up -d
+# Requires host/99-photo-card.rules installed (mounts SD cards read-only at /media/cards).
+services:
+  photo-importer:
+    image: ghcr.io/dhamma-dev/photo-importer:latest
+    container_name: photo-importer
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8080:8080"
+    volumes:
+      # rslave: cards inserted after the container starts still show up inside it.
+      - type: bind
+        source: /media/cards
+        target: /cards
+        read_only: true
+        bind:
+          propagation: rslave
+      - importer-data:/data
+    tmpfs:
+      - /tmp
+    # Keep Docker's own log of this container small and bounded.
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "2"
+
+volumes:
+  importer-data:

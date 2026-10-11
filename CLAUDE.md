@@ -63,10 +63,32 @@ resurrect its design.
    removal. A container with `/media/cards:/cards:ro,rslave` sees hot-plugged
    cards. The built-in reader manages only ~40 MB/s, so read the card as few
    times as possible.
-1. Minimal app: detect card → import → verify → result.
+1. Minimal app: detect card → import → verify → result. BUILT 2026-10-11,
+   tested locally against a fake Immich/immich-go; awaiting first NUC deploy.
 2. Polish: history, phone-friendly UI, live progress.
 3. Later, separately: Lightroom-edited JPEG exports replacing the stacked JPEG;
    voice-memo captioning (Whisper + LLM → XMP sidecars); offsite backup.
+
+## Files
+- `app/main.py` — FastAPI routes; sets low CPU/IO priority at startup.
+- `app/importer.py` — card scan, the import job (hash → check → immich-go →
+  verify), bounded history in `/data/imports/<id>/`.
+- `app/immich.py` — Immich API (`users/me`, `bulk-upload-check`).
+- `app/static/index.html` — the whole UI (vanilla JS; polls only while an
+  import runs and the tab is visible).
+- `Dockerfile`, `docker-compose.yml` (for the NUC), `.env.example`,
+  `.github/workflows/image.yml` (→ `ghcr.io/dhamma-dev/photo-importer`).
+- `host/99-photo-card.rules` — udev rule installed on the NUC.
+
+## immich-go gotchas
+- Always pass `--log-file`: by default it writes a new log in `~/.cache/immich-go/`
+  on every run and never cleans them up.
+- `--pause-immich-jobs` defaults to true (pauses Immich's job queue). We pass
+  false: we don't touch Immich's state.
+- Server/key are passed via `IMMICH_GO_UPLOAD_SERVER` / `IMMICH_GO_UPLOAD_API_KEY`
+  env vars so the key isn't in the process list.
+- Sony video lives in `PRIVATE/M4ROOT/CLIP`; `THMBNL`/`SUB` are thumbnails or
+  proxies, so only `DCIM` + `CLIP` are uploaded.
 
 ## Conventions
 - Python for the app; bash with `set -uo pipefail` for any scripts.
