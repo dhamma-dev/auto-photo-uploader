@@ -1,0 +1,6 @@
+# Install on the NUC: /etc/udev/rules.d/99-photo-card.rules, then `sudo udevadm control --reload`.
+# On SD-card insert (built-in slot), mount it READ-ONLY at /media/cards/<kernel name>.
+# Event-driven (runs only on insert); systemd unmounts it when the card is removed.
+# systemd-mount is required: udevd's own mount namespace is private, so a plain `mount` would be invisible.
+# UDISKS_IGNORE keeps the desktop automounter from also mounting it read-write.
+ACTION=="add", SUBSYSTEM=="block", KERNEL=="mmcblk[0-9]p[0-9]", ENV{ID_FS_USAGE}=="filesystem", ENV{UDISKS_IGNORE}="1", RUN+="/usr/bin/systemd-mount --no-block --collect -o ro,nosuid,nodev,noexec /dev/%k /media/cards/%k"
