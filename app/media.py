@@ -62,7 +62,7 @@ def scan_card(root: Path) -> list[MediaFile]:
 def group_shots(files: list[MediaFile]) -> list[Shot]:
     shots: dict[str, Shot] = {}
     for f in files:
-        key = str(Path(f.rel).with_suffix("")).upper()
+        key = shot_key(f.rel)
         shots.setdefault(key, Shot(key)).files.append(f)
     return list(shots.values())
 
@@ -72,25 +72,36 @@ def date_source(shot: Shot) -> MediaFile:
     return min(shot.files, key=lambda f: rank.get(Path(f.rel).suffix.lower(), 99))
 
 
-def capture_time(f: MediaFile) -> datetime:
-    """Camera-local capture time: EXIF for stills, Sony's XML for clips, else file mtime."""
+def read_header(f: MediaFile) -> tuple[datetime, bytes | None]:
+    """Camera-local capture time (EXIF for stills, Sony's XML for clips, else file mtime)
+    and the small preview JPEG the camera embeds in stills. Reads a few KB per file."""
     ext = f.path.suffix.lower()
+    t, thumb = None, None
     try:
         if ext in (".jpg", ".jpeg"):
-            t = _jpeg_datetime(f.path)
+            t, thumb = _jpeg_info(f.path)
         elif ext in (".arw", ".dng"):
             with open(f.path, "rb") as fh:
-                t = _tiff_datetime(fh, 0)
+                t, thumb = _tiff_info(fh, 0)
         elif ext in (".mp4", ".mov"):
             t = _sony_clip_datetime(f.path)
-        else:
-            t = None
     except (OSError, ValueError, struct.error):
-        t = None
-    return t or datetime.fromtimestamp(f.mtime_ns / 1e9, TZ).replace(tzinfo=None)
+        pass
+    return t or datetime.fromtimestamp(f.mtime_ns / 1e9, TZ).replace(tzinfo=None), thumb
 
 
-def summarize_sessions(shots: list[Shot], present: set[str]) -> list[dict]:
+def shot_key(rel: str) -> str:
+    return str(Path(rel).with_suffix("")).upper()
+
+
+def sample(items: list, n: int) -> list:
+    """Up to n items spread evenly across the list."""
+    if len(items) <= n:
+        return list(items)
+    return [items[round(i * (len(items) - 1) / (n - 1))] for i in range(n)]
+
+
+def summarize_sessions(shots: list[Shot], present: set[str], has_thumb: set[str]) -> list[dict]:
     """Per-day summary. A shot is 'in Immich' only if every file is fingerprinted and present."""
     by_day: dict[str, list[Shot]] = defaultdict(list)
     for s in shots:
@@ -106,6 +117,7 @@ def summarize_sessions(shots: list[Shot], present: set[str]) -> list[dict]:
             else:
                 unknown += 1
         times = [s.taken for s in ss]
+        ordered = sorted(ss, key=lambda s: s.taken)
         out.append({
             "date": day,
             "shots": len(ss),
@@ -116,6 +128,8 @@ def summarize_sessions(shots: list[Shot], present: set[str]) -> list[dict]:
             "in_immich": in_immich,
             "new": new,
             "unknown": unknown,
+            "videos": sum(1 for s in ss if all(Path(f.rel).suffix.lower() in (".mp4", ".mov") for f in s.files)),
+            "thumbs": sample([s.key for s in ordered if s.key in has_thumb], 12),
         })
     return out
 
@@ -125,33 +139,43 @@ def summarize_sessions(shots: list[Shot], present: set[str]) -> list[dict]:
 _EXIF_FMT = "%Y:%m:%d %H:%M:%S"
 
 
-def _jpeg_datetime(path: Path) -> datetime | None:
+def _jpeg_info(path: Path) -> tuple[datetime | None, bytes | None]:
     with open(path, "rb") as fh:
         if fh.read(2) != b"\xff\xd8":
-            return None
+            return None, None
         while True:
             marker = fh.read(4)
             if len(marker) < 4 or marker[0] != 0xFF or marker[1] == 0xDA:
-                return None
+                return None, None
             length = struct.unpack(">H", marker[2:])[0]
             start = fh.tell()
             if marker[1] == 0xE1 and fh.read(6) == b"Exif\x00\x00":
-                return _tiff_datetime(fh, start + 6)
+                return _tiff_info(fh, start + 6)
             fh.seek(start + length - 2)
 
 
-def _tiff_datetime(fh, base: int) -> datetime | None:
+MAX_THUMB = 128 * 1024
+
+
+def _tiff_info(fh, base: int) -> tuple[datetime | None, bytes | None]:
+    """DateTimeOriginal and the embedded JPEG thumbnail (IFD0/IFD1 tags 0x0201/0x0202)."""
     fh.seek(base)
     hdr = fh.read(8)
     e = {b"II": "<", b"MM": ">"}.get(hdr[:2])
     if not e:
-        return None
+        return None, None
 
-    def ifd(offset: int) -> dict[int, bytes]:
+    def ifd(offset: int) -> tuple[dict[int, bytes], int]:
         fh.seek(base + offset)
         (n,) = struct.unpack(e + "H", fh.read(2))
-        raw = fh.read(12 * n)
-        return {struct.unpack(e + "H", raw[i:i + 2])[0]: raw[i:i + 12] for i in range(0, len(raw) - 11, 12)}
+        raw = fh.read(12 * n + 4)
+        entries = {struct.unpack(e + "H", raw[i:i + 2])[0]: raw[i:i + 12] for i in range(0, 12 * n, 12)}
+        nxt = struct.unpack(e + "I", raw[12 * n:12 * n + 4])[0] if len(raw) >= 12 * n + 4 else 0
+        return entries, nxt
+
+    def number(entry: bytes) -> int:
+        typ = struct.unpack(e + "H", entry[2:4])[0]
+        return struct.unpack(e + "H", entry[8:10])[0] if typ == 3 else struct.unpack(e + "I", entry[8:12])[0]
 
     def ascii_value(entry: bytes) -> str:
         _, _, count = struct.unpack(e + "HHI", entry[:8])
@@ -162,20 +186,37 @@ def _tiff_datetime(fh, base: int) -> datetime | None:
             data = fh.read(count)
         return data.split(b"\x00")[0].decode("ascii", "replace").strip()
 
-    ifd0 = ifd(struct.unpack(e + "I", hdr[4:8])[0])
+    ifd0, next_off = ifd(struct.unpack(e + "I", hdr[4:8])[0])
+    ifds = [ifd0]
+    if next_off:
+        ifds.append(ifd(next_off)[0])
+
     candidates = []
     if 0x8769 in ifd0:  # Exif sub-IFD
-        exif = ifd(struct.unpack(e + "I", ifd0[0x8769][8:12])[0])
+        exif, _ = ifd(number(ifd0[0x8769]))
         if 0x9003 in exif:  # DateTimeOriginal
             candidates.append(exif[0x9003])
     if 0x0132 in ifd0:  # DateTime
         candidates.append(ifd0[0x0132])
+    taken = None
     for c in candidates:
         try:
-            return datetime.strptime(ascii_value(c), _EXIF_FMT)
+            taken = datetime.strptime(ascii_value(c), _EXIF_FMT)
+            break
         except ValueError:
             continue
-    return None
+
+    thumb = None
+    for d in reversed(ifds):  # IFD1 is the usual home of the thumbnail
+        if 0x0201 in d and 0x0202 in d:
+            off, length = number(d[0x0201]), number(d[0x0202])
+            if 0 < length <= MAX_THUMB:
+                fh.seek(base + off)
+                data = fh.read(length)
+                if data[:2] == b"\xff\xd8":
+                    thumb = data
+                    break
+    return taken, thumb
 
 
 _CLIP_DATE = re.compile(rb'CreationDate\s+value="([^"]+)"')

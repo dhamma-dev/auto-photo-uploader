@@ -2,112 +2,240 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
 <title>Photo Importer</title>
 <style>
   :root {
-    --bg: #f6f6f4; --card: #fff; --text: #1d1d1b; --muted: #6b6b66; --line: #e3e3de;
-    --accent: #2f5bd3; --on-accent: #fff; --ok: #1f7a3d; --ok-bg: #e6f4ea; --bad: #b3261e; --bad-bg: #fce8e6;
-    --warn: #8a5a00; --warn-bg: #fdf1dc;
+    --bg: #f4f3ef; --surface: #ffffff; --surface-2: #ecebe5; --line: #e2e0d8; --line-strong: #cfcdc3;
+    --text: #1b1b19; --muted: #6c6b64; --faint: #9a998f;
+    --accent: #2a5bd7; --accent-soft: #e4ebfb; --on-accent: #ffffff;
+    --ok: #1d7a43; --ok-soft: #e1f2e7; --warn: #8a5a00; --warn-soft: #fbefd7; --bad: #b3261e; --bad-soft: #fbe6e4;
+    --tile: #dddbd2; --scrim: rgba(20, 20, 18, .45);
+    --radius: 14px; --ease: cubic-bezier(.2, .7, .2, 1);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #161615; --card: #20201e; --text: #ecece8; --muted: #9a9a94; --line: #34342f;
-      --accent: #7a9bff; --on-accent: #0d1633; --ok: #6fd28f; --ok-bg: #18301f; --bad: #ff8a80; --bad-bg: #3a1c1a;
-      --warn: #f2c46d; --warn-bg: #352a14;
+      --bg: #0f0f0e; --surface: #1a1a18; --surface-2: #242421; --line: #2c2c29; --line-strong: #3d3d39;
+      --text: #f2f1ec; --muted: #a09f97; --faint: #6f6e67;
+      --accent: #8eb0ff; --accent-soft: #1d2a47; --on-accent: #0b1430;
+      --ok: #74d39a; --ok-soft: #15301f; --warn: #f0c46c; --warn-soft: #33290f; --bad: #ff8f86; --bad-soft: #3a1917;
+      --tile: #2a2a27; --scrim: rgba(0, 0, 0, .6);
     }
   }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text);
-         font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  main { max-width: 640px; margin: 0 auto; padding: 20px 16px 48px; }
-  header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; }
-  h1 { font-size: 1.35rem; margin: 0; }
-  h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 28px 0 10px; }
-  a { color: var(--accent); }
-  .pill { font-size: .8rem; padding: 3px 10px; border-radius: 99px; background: var(--card); border: 1px solid var(--line); white-space: nowrap; }
-  .pill.ok::before { content: "● "; color: var(--ok); }
-  .pill.bad::before { content: "● "; color: var(--bad); }
-  .box { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
-  .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-  .muted { color: var(--muted); font-size: .9rem; }
-  .small { font-size: .82rem; }
-  button, .btn { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 10px 18px; cursor: pointer;
-           background: var(--accent); color: var(--on-accent); text-decoration: none; display: inline-block; }
-  button.secondary, .btn.secondary { background: transparent; color: var(--accent); border: 1px solid var(--line); }
-  button.link { background: none; color: var(--accent); padding: 0; font-weight: 500; font-size: .85rem; }
-  button:disabled { opacity: .45; cursor: default; }
-  input[type=text] { font: inherit; width: 100%; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line);
-                     background: var(--bg); color: var(--text); }
-  label.field { display: block; margin-top: 12px; }
-  label.field span { display: block; font-size: .82rem; color: var(--muted); margin-bottom: 4px; }
-  .badge { font-size: .78rem; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
-  .badge.ok { background: var(--ok-bg); color: var(--ok); }
-  .badge.new { background: var(--warn-bg); color: var(--warn); }
-  .badge.unknown { border: 1px solid var(--line); color: var(--muted); }
-  .sessions { margin-top: 12px; border-top: 1px solid var(--line); }
-  .session { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
-  .session input { margin-top: 4px; width: 18px; height: 18px; accent-color: var(--accent); flex: none; }
-  .session .main { flex: 1; min-width: 0; }
-  .session .badges { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
-  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
-  .chip { font-size: .78rem; padding: 2px 9px; border-radius: 99px; border: 1px dashed var(--line); background: none;
-          color: var(--muted); cursor: pointer; font-weight: 500; }
-  .actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
-  details summary { cursor: pointer; }
-  .bar { height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; margin: 12px 0 6px; }
-  .bar > div { height: 100%; background: var(--accent); transition: width .4s; }
-  .bar.indeterminate > div { width: 30%; animation: slide 1.2s ease-in-out infinite; }
-  @keyframes slide { from { margin-left: -30%; } to { margin-left: 100%; } }
-  .steps { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
-  .steps span { font-size: .78rem; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
-  .steps span.done { color: var(--ok); border-color: var(--ok); }
-  .steps span.now { color: var(--accent); border-color: var(--accent); font-weight: 600; }
-  .result.ok { background: var(--ok-bg); border-color: transparent; }
-  .result.bad { background: var(--bad-bg); border-color: transparent; }
-  .result.warn { background: var(--warn-bg); border-color: transparent; }
-  .result .big { font-size: 1.15rem; font-weight: 650; }
-  .result.ok .big { color: var(--ok); }
-  .result.bad .big { color: var(--bad); }
-  .result.warn .big { color: var(--warn); }
-  .note { color: var(--warn); font-size: .9rem; margin-top: 8px; }
-  ul.files { margin: 8px 0 0; padding-left: 18px; font: .82rem/1.5 ui-monospace, monospace; max-height: 220px; overflow: auto; }
-  pre { font: .75rem/1.4 ui-monospace, monospace; white-space: pre-wrap; word-break: break-all; max-height: 260px; overflow: auto;
-        background: var(--bg); padding: 8px; border-radius: 6px; }
-  .hist { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; font-size: .9rem; }
-  .empty { text-align: center; padding: 28px 16px; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { background: var(--bg); }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+         font-feature-settings: "tnum"; -webkit-font-smoothing: antialiased; }
+  main { max-width: 720px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 16px 0; min-height: 100vh; display: flex; flex-direction: column; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  a { color: inherit; }
+  [hidden] { display: none !important; }
+  .muted { color: var(--muted); }
+  .small { font-size: .86rem; }
+
+  /* top bar */
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0 18px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; letter-spacing: -.01em; }
+  .brand svg { width: 22px; height: 22px; color: var(--accent); }
+  .status { display: flex; align-items: center; gap: 7px; font-size: .82rem; color: var(--muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+  .dot.ok { background: var(--ok); } .dot.bad { background: var(--bad); }
+  .banner { border-radius: var(--radius); padding: 12px 14px; margin-bottom: 14px; font-size: .92rem; }
+  .banner.bad { background: var(--bad-soft); color: var(--bad); }
+
+  /* buttons */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 46px; padding: 0 20px; border-radius: 12px;
+         font-weight: 600; background: var(--accent); color: var(--on-accent); text-decoration: none; transition: transform .1s, opacity .2s; }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .4; cursor: default; transform: none; }
+  .btn.quiet { background: var(--surface-2); color: var(--text); }
+  .btn.ghost { background: none; color: var(--muted); font-weight: 500; }
+  .btn.block { width: 100%; }
+  .link { color: var(--accent); font-size: .88rem; font-weight: 500; }
+
+  /* card header */
+  .cardhead { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin: 4px 2px 14px; }
+  .cardhead h1 { font-size: 1.55rem; line-height: 1.15; letter-spacing: -.02em; margin: 0; font-weight: 700; }
+  .safe { display: flex; align-items: center; gap: 10px; background: var(--ok-soft); color: var(--ok); border-radius: var(--radius);
+          padding: 12px 14px; margin-bottom: 14px; font-weight: 550; }
+
+  /* day cards */
+  .days { display: grid; gap: 12px; padding-bottom: 16px; }
+  .day { text-align: left; width: 100%; background: var(--surface); border-radius: 18px; padding: 14px; box-shadow: inset 0 0 0 1px var(--line);
+         transition: box-shadow .2s var(--ease), transform .1s; }
+  .day:active { transform: scale(.995); }
+  .day[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--accent); }
+  .dayhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .daytitle { font-size: 1.08rem; font-weight: 650; letter-spacing: -.01em; }
+  .check { flex: none; width: 26px; height: 26px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--line-strong); display: grid; place-items: center;
+           transition: background .2s, box-shadow .2s; }
+  .check svg { width: 15px; height: 15px; color: var(--on-accent); opacity: 0; transform: scale(.6); transition: .2s var(--ease); }
+  [aria-pressed="true"] .check { background: var(--accent); box-shadow: none; }
+  [aria-pressed="true"] .check svg { opacity: 1; transform: none; }
+  .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 2px; font-size: .86rem; color: var(--muted); }
+  .chip { font-size: .76rem; font-weight: 600; padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
+  .chip.ok { background: var(--ok-soft); color: var(--ok); }
+  .chip.new { background: var(--warn-soft); color: var(--warn); }
+  .strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); grid-template-rows: auto; grid-auto-rows: 0; overflow: hidden;
+           gap: 0 4px; margin-top: 12px; border-radius: 10px; }
+  .tile { aspect-ratio: 3 / 2; background: var(--tile); border-radius: 6px; overflow: hidden; display: grid; place-items: center; color: var(--faint); }
+  /* Camera previews are 4:3 with thin black bars around a 3:2 photo; a slight zoom trims them. */
+  .tile img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .4s; transform: scale(1.06); }
+  .tile img.loaded { opacity: 1; }
+  .tile svg { width: 20px; height: 20px; }
+
+  /* sticky action bar */
+  .bar { position: sticky; bottom: 0; margin: auto -16px 0; padding: 12px 16px max(14px, env(safe-area-inset-bottom));
+         background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+         border-top: 1px solid var(--line); }
+  .barrow { display: flex; gap: 8px; margin-bottom: 10px; overflow-x: auto; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 99px; font-size: .86rem; font-weight: 550;
+          background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; max-width: 60vw; }
+  .pill span { overflow: hidden; text-overflow: ellipsis; }
+  .pill svg { width: 16px; height: 16px; flex: none; color: var(--muted); }
+  .pill.set { box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .pill.set svg { color: var(--accent); }
+
+  /* sheet */
+  dialog.sheet { border: 0; padding: 0; background: var(--surface); color: var(--text); width: min(560px, 100vw); max-width: 100vw; max-height: 90vh;
+                 border-radius: 20px; margin: auto; }
+  dialog.sheet::backdrop { background: var(--scrim); }
+  @media (max-width: 600px) {
+    dialog.sheet { margin: auto 0 0; border-radius: 20px 20px 0 0; width: 100vw; }
+    dialog.sheet[open] { animation: up .28s var(--ease); }
+  }
+  @keyframes up { from { transform: translateY(40px); opacity: 0; } }
+  .sheetbody { padding: 18px 18px max(18px, env(safe-area-inset-bottom)); }
+  .sheet h2 { font-size: 1.1rem; margin: 0 0 14px; }
+  .field { display: block; margin-bottom: 16px; }
+  .field > span { display: block; font-size: .8rem; font-weight: 600; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .04em; }
+  input[type=text] { font: inherit; width: 100%; height: 46px; padding: 0 14px; border-radius: 12px; border: 0; background: var(--surface-2); color: var(--text);
+                     outline: none; box-shadow: inset 0 0 0 1px transparent; }
+  input[type=text]:focus { box-shadow: inset 0 0 0 2px var(--accent); }
+  .suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .suggest button { font-size: .84rem; padding: 6px 11px; border-radius: 99px; background: var(--surface-2); }
+  .suggest button.new::before { content: "+ "; color: var(--accent); }
+  .toggle { display: flex; gap: 10px; align-items: flex-start; font-size: .88rem; color: var(--muted); margin: 6px 0 18px; }
+  .toggle input { width: 18px; height: 18px; accent-color: var(--accent); margin-top: 2px; }
+
+  /* importing / result stage */
+  .stage { flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 8px 0 24px; }
+  .stage .kicker { align-self: stretch; text-align: left; font-size: .9rem; color: var(--muted); }
+  .ring { position: relative; width: 200px; height: 200px; margin: 28px 0 18px; }
+  .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 10; stroke-linecap: round; }
+  .ring .track { stroke: var(--line); }
+  .ring .fill { stroke: var(--accent); transition: stroke-dashoffset .8s var(--ease); }
+  .ring.spin svg { animation: spin 1.4s linear infinite; }
+  @keyframes spin { to { transform: rotate(270deg); } }
+  .ringlabel { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .ringlabel b { font-size: 2.6rem; letter-spacing: -.03em; font-weight: 700; }
+  .phase { font-size: 1.2rem; font-weight: 650; letter-spacing: -.01em; }
+  .now { position: relative; width: 168px; aspect-ratio: 3 / 2; margin: 22px 0 6px; border-radius: 12px; overflow: hidden; background: var(--tile); }
+  .now img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .6s; transform: scale(1.06); }
+  .now img.show { opacity: 1; }
+  .steps { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin: 18px 0 0; }
+  .steps span { font-size: .76rem; font-weight: 600; padding: 4px 10px; border-radius: 99px; color: var(--faint); box-shadow: inset 0 0 0 1px var(--line); }
+  .steps span.done { color: var(--ok); box-shadow: none; background: var(--ok-soft); }
+  .steps span.cur { color: var(--accent); box-shadow: none; background: var(--accent-soft); }
+  .stagefoot { margin-top: auto; padding-top: 28px; display: grid; gap: 6px; justify-items: center; }
+  .badge { width: 88px; height: 88px; border-radius: 50%; display: grid; place-items: center; margin: 40px 0 18px; animation: pop .5s var(--ease); }
+  .badge svg { width: 42px; height: 42px; }
+  .badge.ok { background: var(--ok-soft); color: var(--ok); }
+  .badge.warn { background: var(--warn-soft); color: var(--warn); }
+  .badge.bad { background: var(--bad-soft); color: var(--bad); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } }
+  .headline { font-size: 1.6rem; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; margin: 0; max-width: 22ch; }
+  .mosaic { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; width: 100%; max-width: 420px; margin: 22px 0 4px; border-radius: 12px; overflow: hidden; }
+  .actions { display: grid; gap: 8px; width: 100%; max-width: 420px; margin-top: 22px; }
+  .note { color: var(--warn); font-size: .9rem; margin-top: 12px; max-width: 46ch; }
+  details.more { width: 100%; max-width: 520px; text-align: left; margin-top: 16px; font-size: .9rem; }
+  details.more summary { cursor: pointer; color: var(--muted); }
+  details.more ul, details.more pre { margin: 8px 0 0; padding: 10px 12px 10px 28px; background: var(--surface); border-radius: 10px; max-height: 240px; overflow: auto;
+                                      font: .78rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  details.more pre { padding-left: 12px; white-space: pre-wrap; word-break: break-all; }
+
+  /* empty + recent */
+  .empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px 0; }
+  .empty svg { width: 76px; height: 76px; color: var(--faint); margin-bottom: 18px; }
+  .empty .pulse { animation: breathe 2.6s ease-in-out infinite; }
+  @keyframes breathe { 50% { opacity: .45; } }
+  .recent { margin: 22px 0 28px; }
+  .recent h3 { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 2px 8px; font-weight: 650; }
+  .recent ol { list-style: none; margin: 0; padding: 0; background: var(--surface); border-radius: var(--radius); box-shadow: inset 0 0 0 1px var(--line); }
+  .recent li { display: flex; align-items: center; gap: 12px; padding: 11px 14px; font-size: .9rem; }
+  .recent li + li { border-top: 1px solid var(--line); }
+  .recent .ico { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; flex: none; font-size: .72rem; font-weight: 700; }
+  .recent .ico.ok { background: var(--ok-soft); color: var(--ok); }
+  .recent .ico.warn { background: var(--warn-soft); color: var(--warn); }
+  .recent .ico.bad { background: var(--bad-soft); color: var(--bad); }
+  .recent .what { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .skeleton { height: 150px; border-radius: 18px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); animation: breathe 1.6s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
 <main>
-  <header>
-    <h1>Photo Importer</h1>
-    <span id="immich" class="pill">Immich…</span>
-  </header>
-  <div id="job"></div>
-  <h2>Cards</h2>
-  <div id="cards"><div class="box muted">Reading card…</div></div>
-  <h2>Recent imports</h2>
-  <div id="history" class="box muted">—</div>
+  <div class="top">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M9 3v4M12 3v4M15 4v3"/></svg>
+      Photo Importer
+    </div>
+    <div class="status" id="status"><span class="dot"></span><span>Connecting…</span></div>
+  </div>
+  <div id="app"><div class="days"><div class="skeleton"></div><div class="skeleton"></div></div></div>
 </main>
-<datalist id="albums"></datalist>
-<script>
-const STEP_LABEL = {scanning: "List", hashing: "Fingerprint", checking: "Check", uploading: "Upload",
-                    verifying: "Verify", organizing: "Album & tags"};
-let state = {cards: [], job: null, immichUrl: ""};
-let selection = {};  // card name -> {sessions:Set, album, tags, reread}
-let pollTimer = null;
 
-const $ = id => document.getElementById(id);
-const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const gb = b => b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : Math.max(0, b / 1e6).toFixed(0) + " MB";
-const n = x => (x || 0).toLocaleString();
-const dayName = d => new Date(d + "T12:00").toLocaleDateString(undefined, {weekday: "short", month: "short", day: "numeric", year: "numeric"});
-const clock = iso => new Date(iso).toLocaleTimeString(undefined, {hour: "numeric", minute: "2-digit"});
-const when = t => new Date(t * 1000).toLocaleString(undefined, {month: "short", day: "numeric", hour: "numeric", minute: "2-digit"});
-const dur = s => !isFinite(s) || s < 0 ? "" : s < 90 ? Math.round(s) + " s" : s < 5400 ? Math.round(s / 60) + " min" : (s / 3600).toFixed(1) + " h";
-const running = () => state.job && state.job.status === "running";
+<dialog class="sheet" id="sheet">
+  <form method="dialog" class="sheetbody" id="sheetform">
+    <h2>Album and tags</h2>
+    <label class="field"><span>Album</span>
+      <input type="text" id="albumInput" placeholder="Banff trip" autocomplete="off"></label>
+    <div class="suggest" id="albumSuggest"></div>
+    <label class="field" style="margin-top:18px"><span>Tags</span>
+      <input type="text" id="tagsInput" placeholder="Family, Hiking/Garibaldi" autocomplete="off"></label>
+    <label class="toggle"><input type="checkbox" id="rereadInput">
+      <span>Re-read every file, even ones this card has already been checked for. Slower; only needed if something seems off.</span></label>
+    <button class="btn block" value="done">Done</button>
+  </form>
+</dialog>
+
+<script>
+const ICON = {
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  bigcheck: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6v12M15 6v12"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"/></svg>',
+  album: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="15" rx="2"/><path d="M3 15l5-5 4 4 3-3 6 6"/><path d="M7 2h10"/></svg>',
+  tag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="8" cy="8" r="1.5"/></svg>',
+  video: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg>',
+  card: '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6h20l10 10v40a3 3 0 0 1-3 3H20a3 3 0 0 1-3-3V9a3 3 0 0 1 3-3z"/><path d="M24 6v9M30 6v9M36 6v9"/><path class="pulse" d="M32 30v14M26 38l6 6 6-6"/></svg>',
+};
+const STEP = {scanning: "List", hashing: "Read", checking: "Check", uploading: "Upload", verifying: "Verify", organizing: "Album"};
+const PHASE = {scanning: "Getting ready", hashing: "Reading photos from the card", checking: "Checking what Immich already has",
+               uploading: "Uploading to Immich", verifying: "Making sure everything arrived", organizing: "Adding to your album"};
+
+let S = {immich: null, cards: null, albums: [], job: null, history: [], present: null};
+let sel = {};  // card name -> {days:Set, album, tags, reread}
+let jobTimer = null, cardTimer = null, sheetCard = null;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const n = x => Math.round(x || 0).toLocaleString();
+const plural = (x, one, many = one + "s") => `${n(x)} ${x === 1 ? one : many}`;
+const size = b => b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : Math.max(1, Math.round(b / 1e6)) + " MB";
 const now = () => Date.now() / 1000;
+const thisYear = new Date().getFullYear();
+const dayTitle = d => { const t = new Date(d + "T12:00");
+  return t.toLocaleDateString(undefined, {weekday: "long", month: "long", day: "numeric", ...(t.getFullYear() !== thisYear && {year: "numeric"})}); };
+const shortDay = d => new Date(d + "T12:00").toLocaleDateString(undefined, {month: "short", day: "numeric", ...(new Date(d).getFullYear() !== thisYear && {year: "numeric"})});
+const clock = iso => new Date(iso).toLocaleTimeString(undefined, {hour: "numeric", minute: "2-digit"});
+const dur = s => !isFinite(s) || s <= 0 ? "" : s < 60 ? "under a minute" : s < 5400 ? `about ${Math.round(s / 60)} min` : `about ${(s / 3600).toFixed(1)} hours`;
+const running = () => S.job && S.job.status === "running";
+const thumbUrl = (k, v) => `/api/thumb?k=${encodeURIComponent(k)}&v=${encodeURIComponent(v || "")}`;
+const store = {get: k => { try { return sessionStorage.getItem(k); } catch { return null; } },
+               set: (k, v) => { try { sessionStorage.setItem(k, v); } catch {} }};
 
 async function api(path, opts) {
   const r = await fetch(path, opts);
@@ -116,219 +244,301 @@ async function api(path, opts) {
   return body;
 }
 
-async function loadOverview() {
+// ---------- data ----------
+
+async function load() {
   try {
     const o = await api("/api/overview");
-    state.cards = o.cards; state.job = o.job; state.immichUrl = o.immich.url;
-    const im = $("immich");
-    im.className = "pill " + (o.immich.ok ? "ok" : "bad");
-    im.textContent = o.immich.ok ? "Immich connected" : "Immich unreachable";
-    im.title = o.immich.ok ? `${o.immich.url} as ${o.immich.user}` : o.immich.error;
-    $("albums").innerHTML = o.albums.map(a => `<option value="${esc(a)}">`).join("");
-    renderCards(); renderJob(); renderHistory(o.history);
-    if (!o.immich.ok) $("job").insertAdjacentHTML("afterbegin",
-      `<div class="box result bad"><div class="big">Can't talk to Immich</div><div class="muted">${esc(o.immich.error)}</div></div>`);
-    if (running()) startPolling();
+    Object.assign(S, {immich: o.immich, cards: o.cards, albums: o.albums, job: o.job, history: o.history});
+    S.present = o.cards.map(c => c.name).join("|");
   } catch (e) {
-    $("cards").innerHTML = `<div class="box">Couldn't load: ${esc(e.message)}</div>`;
+    S.immich = {ok: false, error: "Can't reach the importer. Is it running?"};
   }
+  render();
+  if (running()) followJob(); else watchCards();
 }
 
-// ---- cards & session picker ----
-
-function selFor(card) {
-  if (!selection[card.name]) {
-    // Default: every day that isn't already fully in Immich.
-    const pick = card.sessions.filter(s => s.in_immich < s.shots).map(s => s.date);
-    selection[card.name] = {sessions: new Set(pick), album: "", tags: "", reread: false};
-  }
-  const sel = selection[card.name];
-  for (const d of [...sel.sessions]) if (!card.sessions.some(s => s.date === d)) sel.sessions.delete(d);
-  return sel;
+// While the page is open and visible: notice a card going in or out (a directory listing on the server).
+function watchCards() {
+  if (cardTimer) return;
+  cardTimer = setInterval(async () => {
+    if (document.hidden || running()) return;
+    try {
+      const names = (await api("/api/cards/present")).join("|");
+      if (names !== S.present) { S.present = names; load(); }
+    } catch {}
+  }, 3000);
 }
 
-function sessionBadges(s) {
-  if (s.in_immich === s.shots) return `<span class="badge ok">✓ In Immich</span>`;
-  const b = [];
-  if (s.new) b.push(`<span class="badge new">${n(s.new)} new</span>`);
-  if (s.unknown) b.push(`<span class="badge unknown">${n(s.unknown)} not checked yet</span>`);
-  if (s.in_immich) b.push(`<span class="badge ok">${n(s.in_immich)} in Immich</span>`);
-  return b.join("");
+function followJob() {
+  clearInterval(cardTimer); cardTimer = null;
+  if (jobTimer) return;
+  jobTimer = setInterval(async () => {
+    if (document.hidden) return;
+    try { S.job = await api("/api/job"); } catch { return; }
+    if (running()) renderStage(); else { clearInterval(jobTimer); jobTimer = null; sel = {}; load(); }
+  }, 1500);
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden && !running()) load(); });
+
+// ---------- rendering ----------
+
+function render() {
+  const st = $("#status");
+  st.innerHTML = !S.immich ? `<span class="dot"></span><span>Connecting…</span>`
+    : S.immich.ok ? `<span class="dot ok"></span><span>Immich</span>` : `<span class="dot bad"></span><span>Immich offline</span>`;
+  st.title = S.immich?.ok ? `${S.immich.url} · ${S.immich.user}` : (S.immich?.error || "");
+  const showResult = S.job && !running() && store.get("dismissed") !== S.job.id;
+  if (running() || showResult) return renderStage();
+  const banner = S.immich && !S.immich.ok ? `<div class="banner bad">${esc(S.immich.error)}</div>` : "";
+  const cards = (S.cards || []).filter(c => !c.busy);
+  $("#app").style.display = "contents";
+  // The action bar goes last so it can stick to the bottom while the days scroll under it.
+  $("#app").innerHTML = banner + (cards.length ? renderCard(cards[0]) : renderEmpty()) + renderRecent() + (cards.length ? renderBar(cards[0]) : "");
+  hydrateThumbs();
 }
 
-function suggestAlbum(card, sel) {
-  const days = card.sessions.filter(s => sel.sessions.has(s.date)).map(s => s.date).sort();
-  if (!days.length) return "";
-  const f = d => new Date(d + "T12:00").toLocaleDateString(undefined, {month: "short", day: "numeric", year: "numeric"});
-  return days.length === 1 ? f(days[0]) : `${f(days[0])} – ${f(days[days.length - 1])}`;
+function renderEmpty() {
+  return `<div class="empty">${ICON.card}
+    <div style="font-size:1.3rem;font-weight:700;letter-spacing:-.01em">Insert a card</div>
+    <div class="muted" style="margin-top:4px">Put an SD card in the NUC. This page will notice.</div></div>`;
 }
 
-function renderCards() {
-  if (!state.cards.length) {
-    $("cards").innerHTML = `<div class="box empty"><div>No card found.</div>
-      <div class="muted" style="margin:6px 0 14px">Insert an SD card into the NUC, then refresh.</div>
-      <button class="secondary" onclick="loadOverview()">Refresh</button></div>`;
-    return;
-  }
-  $("cards").innerHTML = state.cards.map(c => {
-    if (c.busy) return `<div class="box muted">Card in slot ${esc(c.name)}: import in progress.</div>`;
-    const sel = selFor(c);
-    const picked = c.sessions.filter(s => sel.sessions.has(s.date));
-    const pickedShots = picked.reduce((a, s) => a + s.shots, 0), pickedBytes = picked.reduce((a, s) => a + s.bytes, 0);
-    const head = c.all_in_immich
-      ? `<div class="badge ok" style="display:inline-block;margin-top:6px">✓ Everything on this card is in Immich</div>`
-      : c.remembered ? `<div class="muted small">Seen this card before: only new files need reading.</div>` : "";
-    const sessions = c.sessions.map(s => `
-      <label class="session"><input type="checkbox" ${sel.sessions.has(s.date) ? "checked" : ""} ${running() ? "disabled" : ""}
-          onchange="toggleSession('${esc(c.name)}','${s.date}',this.checked)">
-        <div class="main"><strong>${dayName(s.date)}</strong>
-          <div class="muted small">${clock(s.first)}${s.first !== s.last ? " – " + clock(s.last) : ""} · ${n(s.shots)} shots · ${gb(s.bytes)}</div></div>
-        <div class="badges">${sessionBadges(s)}</div></label>`).join("");
-    const suggestion = suggestAlbum(c, sel);
-    return `<div class="box" data-card="${esc(c.name)}">
-      <div class="row"><div><strong>${n(c.shots)} shots</strong> · ${n(c.files)} files · ${gb(c.bytes)}
-        <div class="muted small">Slot ${esc(c.name)}</div></div>
-        <div><button class="link" onclick="selectAll('${esc(c.name)}',true)">All</button> ·
-             <button class="link" onclick="selectAll('${esc(c.name)}',false)">None</button></div></div>
-      ${head}${c.error ? `<div class="note">${esc(c.error)}</div>` : ""}
-      <div class="sessions">${sessions}</div>
-      <label class="field"><span>Album (optional): new or existing</span>
-        <input type="text" list="albums" value="${esc(sel.album)}" placeholder="${esc(suggestion || "Album name")}"
-               oninput="selection['${esc(c.name)}'].album=this.value"></label>
-      ${suggestion ? `<div class="chips"><button class="chip" onclick="setAlbum('${esc(c.name)}', ${esc(JSON.stringify(suggestion))})">Use “${esc(suggestion)}”</button></div>` : ""}
-      <label class="field"><span>Tags (optional, comma-separated)</span>
-        <input type="text" value="${esc(sel.tags)}" placeholder="e.g. Family, Hiking/Garibaldi"
-               oninput="selection['${esc(c.name)}'].tags=this.value"></label>
-      <div class="actions">
-        <details class="muted small"><summary>Advanced</summary>
-          <label style="display:flex;gap:8px;margin-top:6px"><input type="checkbox" ${sel.reread ? "checked" : ""}
-            onchange="selection['${esc(c.name)}'].reread=this.checked">
-            Re-read every file (ignore remembered fingerprints)</label></details>
-        <button ${running() || !picked.length ? "disabled" : ""} onclick="startImport('${esc(c.name)}')">
-          ${picked.length ? `Import ${n(pickedShots)} shots · ${gb(pickedBytes)}` : "Select a day"}</button>
-      </div></div>`;
-  }).join("");
+function selFor(c) {
+  if (!sel[c.name]) sel[c.name] = {days: new Set(c.sessions.filter(s => s.in_immich < s.shots).map(s => s.date)), album: "", tags: "", reread: false};
+  return sel[c.name];
 }
 
-function toggleSession(card, date, on) {
-  const sel = selection[card]; on ? sel.sessions.add(date) : sel.sessions.delete(date); renderCards();
+function renderCard(c) {
+  const s = selFor(c);
+  const days = c.sessions.slice().reverse();  // newest first
+  const allOn = c.sessions.every(d => s.days.has(d.date));
+  return `
+    <div class="cardhead">
+      <div><div class="muted small">SD card · ${size(c.bytes)}</div>
+        <h1>${plural(c.shots, "photo")} from ${plural(c.sessions.length, "day")}</h1></div>
+      <button class="link" onclick="selectAll('${esc(c.name)}', ${!allOn})">${allOn ? "Select none" : "Select all"}</button>
+    </div>
+    ${c.all_in_immich ? `<div class="safe">${ICON.check.replace('stroke-width="3"', 'stroke-width="3" width="18" height="18"')}Everything on this card is already safe in Immich</div>` : ""}
+    ${c.error ? `<div class="banner bad">${esc(c.error)}</div>` : ""}
+    <div class="days">${days.map(d => renderDay(c, s, d)).join("")}</div>`;
 }
-function selectAll(card, on) {
-  const c = state.cards.find(c => c.name === card);
-  selection[card].sessions = new Set(on ? c.sessions.map(s => s.date) : []); renderCards();
-}
-function setAlbum(card, name) { selection[card].album = name; renderCards(); }
 
-// ---- the running / finished import ----
+function renderBar(c) {
+  const s = selFor(c);
+  const picked = c.sessions.filter(d => s.days.has(d.date));
+  const photos = picked.reduce((a, d) => a + d.shots, 0), bytes = picked.reduce((a, d) => a + d.bytes, 0);
+  return `
+    <div class="bar">
+      <div class="barrow">
+        <button class="pill ${s.album ? "set" : ""}" onclick="openSheet('${esc(c.name)}', 'albumInput')">${ICON.album}<span>${s.album ? esc(s.album) : "Add to album"}</span></button>
+        <button class="pill ${s.tags.trim() ? "set" : ""}" onclick="openSheet('${esc(c.name)}', 'tagsInput')">${ICON.tag}<span>${s.tags.trim() ? esc(s.tags) : "Tags"}</span></button>
+      </div>
+      <button class="btn block" ${picked.length ? "" : "disabled"} onclick="startImport('${esc(c.name)}')">
+        ${picked.length ? `Import ${plural(picked.length, "day")} · ${plural(photos, "photo")} · ${size(bytes)}` : "Choose days to import"}</button>
+    </div>`;
+}
+
+function renderDay(c, s, d) {
+  const on = s.days.has(d.date);
+  const stills = d.shots - d.videos;
+  const what = [stills && plural(stills, "photo"), d.videos && plural(d.videos, "video")].filter(Boolean).join(", ");
+  const status = d.in_immich === d.shots ? `<span class="chip ok">In Immich</span>` : d.new ? `<span class="chip new">${n(d.new)} new</span>` : "";
+  const tiles = d.thumbs.length
+    ? d.thumbs.map(k => `<div class="tile"><img data-src="${esc(thumbUrl(k, c.v))}" alt=""></div>`).join("")
+    : `<div class="tile">${ICON.video}</div>`;
+  return `<button class="day" aria-pressed="${on}" onclick="toggleDay('${esc(c.name)}','${d.date}')">
+    <div class="dayhead"><div>
+      <div class="daytitle">${dayTitle(d.date)}</div>
+      <div class="meta"><span>${clock(d.first)}${d.first !== d.last ? " – " + clock(d.last) : ""}</span><span>·</span><span>${what}</span>${status}</div>
+    </div><span class="check">${ICON.check}</span></div>
+    <div class="strip">${tiles}</div></button>`;
+}
+
+function renderRecent() {
+  const h = S.history.slice(0, 6);
+  if (!h.length) return "";
+  const kind = r => ({success: "ok", cancelled: "warn"}[r.status] || "bad");
+  const mark = {ok: "✓", warn: "‖", bad: "!"};
+  return `<section class="recent"><h3>Recent imports</h3><ol>${h.map(r => {
+    const k = kind(r);
+    const when = new Date(r.started * 1000).toLocaleString(undefined, {month: "short", day: "numeric", hour: "numeric", minute: "2-digit"});
+    const what = r.status === "success" ? `${plural(r.shots || r.files, "photo")}${r.album ? ` · ${esc(r.album)}` : ""}` : esc(r.message);
+    return `<li><span class="ico ${k}">${mark[k]}</span><span class="what">${what}</span><span class="muted small">${when}</span></li>`;
+  }).join("")}</ol></section>`;
+}
+
+// Thumbnails fade in as they arrive.
+function hydrateThumbs(root = document) {
+  root.querySelectorAll("img[data-src]").forEach(img => {
+    img.onload = () => img.classList.add("loaded");
+    img.onerror = () => img.remove();
+    img.src = img.dataset.src; img.removeAttribute("data-src");
+  });
+}
+
+// ---------- the import stage ----------
 
 function progress(j) {
   const t = now() - (j.phase_started || j.started);
   if (j.phase === "hashing" && j.hash_bytes) {
     const rate = j.hashed_bytes / Math.max(1, t);
     const left = rate > 0 ? (j.hash_bytes - j.hashed_bytes) / rate : NaN;
-    // Files never seen before are probably new, so they'll be read again for upload.
-    const overall = rate > 0 ? left + j.hash_bytes / rate : NaN;
-    return {pct: 100 * j.hashed_bytes / j.hash_bytes,
-            text: `${gb(j.hashed_bytes)} of ${gb(j.hash_bytes)} read` + (dur(left) ? ` · about ${dur(left)} left for this step` : ""),
-            overall};
+    return {pct: j.hashed_bytes / j.hash_bytes, detail: `${size(j.hashed_bytes)} of ${size(j.hash_bytes)}`,
+            // Files never seen before are usually new, so they'll be read again to upload.
+            eta: rate > 0 ? left + j.hash_bytes / rate : NaN};
   }
   if (j.phase === "uploading") {
     const done = j.uploaded + j.upload_errors, total = Math.max(1, j.to_upload);
-    const left = done > 0 ? (t / done) * (total - done) : NaN;
-    return {pct: Math.min(100, 100 * done / total),
-            text: `${n(j.uploaded)} of ${n(j.to_upload)} uploaded` + (j.upload_errors ? ` · ${n(j.upload_errors)} errors` : "")
-                  + (j.already ? ` · ${n(j.already)} already in Immich` : "") + (dur(left) ? ` · about ${dur(left)} left` : ""),
-            overall: left};
+    return {pct: Math.min(1, done / total),
+            detail: `${n(j.uploaded)} of ${n(j.to_upload)} files${j.upload_errors ? ` · ${plural(j.upload_errors, "problem")}` : ""}`,
+            eta: done > 0 ? (t / done) * (total - done) : NaN};
   }
-  return {pct: null, text: "", overall: NaN};
+  return {pct: null, detail: j.phase === "checking" && j.files ? `${plural(j.files, "file")}` : "", eta: NaN};
 }
 
-function renderJob() {
-  const j = state.job;
-  if (!j) { $("job").innerHTML = ""; document.title = "Photo Importer"; return; }
-  const elapsed = (j.finished || now()) - j.started;
-  const where = j.album ? ` → album “${esc(j.album)}”` : "";
+let lastNow = "";
+function renderStage() {
+  const j = S.job, app = $("#app");
+  app.style.display = "contents";
   if (j.status === "running") {
-    const steps = ["scanning", "hashing", "checking", "uploading", "verifying"].concat(j.album || j.tags.length ? ["organizing"] : []);
-    const idx = steps.indexOf(j.phase);
-    const chips = steps.map((s, i) => `<span class="${i < idx ? "done" : i === idx ? "now" : ""}">${STEP_LABEL[s]}</span>`).join("");
     const p = progress(j);
-    const bar = p.pct === null ? `<div class="bar indeterminate"><div></div></div>` : `<div class="bar"><div style="width:${p.pct}%"></div></div>`;
-    const cancelling = j.cancelling;
-    document.title = `${p.pct === null ? "" : Math.floor(p.pct) + "% · "}${STEP_LABEL[j.phase] || "Importing"} · Photo Importer`;
-    $("job").innerHTML = `<div class="box">
-      <div class="row"><strong>Importing ${n(j.shots)} shots${where}</strong><span class="muted">${dur(elapsed)}</span></div>
-      <div class="steps">${chips}</div>${bar}
-      <div>${esc(j.message)}</div><div class="muted small">${p.text}</div>
-      ${dur(p.overall) ? `<div class="muted small">Whole import: roughly ${dur(p.overall)} to go</div>` : ""}
-      <div class="actions"><span class="muted small">You can close this page; the import keeps running.</span>
-        <button class="secondary" ${cancelling ? "disabled" : ""} onclick="cancelImport()">${cancelling ? "Cancelling…" : "Cancel"}</button></div>
-      ${j.uploader_output.length ? `<details class="small"><summary class="muted">Uploader messages</summary><pre>${esc(j.uploader_output.slice(-15).join("\n"))}</pre></details>` : ""}
-    </div>`;
+    const C = 2 * Math.PI * 90, off = p.pct === null ? C * .75 : C * (1 - p.pct);
+    const steps = ["hashing", "checking", "uploading", "verifying"].concat(j.album || j.tags.length ? ["organizing"] : []);
+    const idx = steps.indexOf(j.phase);
+    document.title = `${p.pct === null ? "" : Math.floor(p.pct * 100) + "% · "}${STEP[j.phase] || "Importing"} · Photo Importer`;
+    const kicker = `${j.album ? esc(j.album) + " · " : ""}${plural(j.shots, "photo")} from ${plural(j.sessions.length || 1, "day")}`;
+    if (!app.querySelector(".stage.live")) {
+      app.innerHTML = `<div class="stage live">
+        <div class="kicker" id="kicker"></div>
+        <div class="ring" id="ring"><svg viewBox="0 0 200 200"><circle class="track" cx="100" cy="100" r="90"/>
+          <circle class="fill" id="ringfill" cx="100" cy="100" r="90" stroke-dasharray="${C}" stroke-dashoffset="${C}"/></svg>
+          <div class="ringlabel"><b id="pct"></b><span class="muted small" id="eta"></span></div></div>
+        <div class="phase" id="phase"></div><div class="muted" id="detail"></div>
+        <div class="now"><img id="nowA" alt=""><img id="nowB" alt=""></div>
+        <div class="steps" id="steps"></div>
+        <div class="stagefoot"><span class="muted small">You can close this page. The import keeps going.</span>
+          <button class="btn ghost" id="cancelBtn" onclick="cancelImport()">Cancel import</button></div></div>`;
+      lastNow = "";
+    }
+    $("#kicker").innerHTML = kicker;
+    $("#ring").classList.toggle("spin", p.pct === null);
+    $("#ringfill").style.strokeDashoffset = off;
+    $("#pct").textContent = p.pct === null ? "" : Math.floor(p.pct * 100) + "%";
+    $("#eta").textContent = dur(p.eta) ? dur(p.eta) + " left" : "";
+    $("#phase").textContent = j.cancelling ? "Stopping…" : PHASE[j.phase] || "Working";
+    $("#detail").textContent = p.detail;
+    $("#steps").innerHTML = steps.map((s, i) => `<span class="${i < idx ? "done" : i === idx ? "cur" : ""}">${STEP[s]}</span>`).join("");
+    $("#cancelBtn").disabled = j.cancelling;
+    if (j.current_shot && j.current_shot !== lastNow) {  // crossfade to the photo in flight
+      lastNow = j.current_shot;
+      const [a, b] = $("#nowA").classList.contains("show") ? [$("#nowB"), $("#nowA")] : [$("#nowA"), $("#nowB")];
+      a.onload = () => { a.classList.add("show"); b.classList.remove("show"); };
+      a.src = thumbUrl(j.current_shot, (S.cards || []).find(c => c.name === j.card)?.v);
+    }
     return;
   }
+
   const kind = j.status === "success" ? "ok" : j.status === "cancelled" ? "warn" : "bad";
-  document.title = `${kind === "ok" ? "✓ Done" : kind === "warn" ? "Cancelled" : "✗ Failed"} · Photo Importer`;
-  const cardStillIn = state.cards.some(c => c.name === j.card);
-  const missing = kind === "bad" && j.missing.length
-    ? `<div style="margin-top:10px"><strong>Not in Immich:</strong><ul class="files">${j.missing.slice(0, 200).map(f => `<li>${esc(f)}</li>`).join("")}</ul></div>` : "";
-  const out = kind !== "ok" && j.uploader_output.length
-    ? `<details class="small"><summary class="muted">Uploader messages</summary><pre>${esc(j.uploader_output.join("\n"))}</pre></details>` : "";
-  const sub = {
-    ok: `${n(j.already)} were already there, ${n(j.files - j.already)} uploaded now${where}. You can remove the card.`,
-    warn: `Nothing on the card was changed. Importing again picks up where this left off.`,
-    bad: `Nothing on the card was changed.${cardStillIn ? " Try again; files already in Immich are skipped." : ""}`,
+  document.title = `${{ok: "Done", warn: "Cancelled", bad: "Needs attention"}[kind]} · Photo Importer`;
+  const v = (S.cards || []).find(c => c.name === j.card)?.v;
+  const cardIn = (S.cards || []).some(c => c.name === j.card);
+  const uploaded = j.files - j.already;
+  const headline = {
+    ok: `${plural(j.shots, "photo")} safe in Immich`,
+    warn: "Import paused",
+    bad: j.missing.length ? `${plural(j.missing.length, "file")} didn't make it` : "The import stopped",
   }[kind];
-  const link = kind === "ok" ? `<a class="btn" href="${esc(j.album_url || state.immichUrl)}" target="_blank" rel="noopener">Open in Immich</a>` : "";
-  const retry = kind !== "ok" && cardStillIn ? `<button onclick='retry()'>${kind === "warn" ? "Resume" : "Try again"}</button>` : "";
-  $("job").innerHTML = `<div class="box result ${kind}">
-    <div class="big">${{ok: "✓ ", warn: "", bad: "✗ "}[kind]}${esc(j.message)}</div>
-    <div class="muted" style="margin-top:4px">${sub} · ${dur(elapsed)}</div>
-    ${j.organize_error ? `<div class="note">${esc(j.organize_error)}</div>` : ""}${missing}${out}
-    ${link || retry ? `<div class="actions" style="justify-content:flex-start">${link}${retry}</div>` : ""}</div>`;
+  const sub = {
+    ok: [uploaded ? `${n(uploaded)} new ${uploaded === 1 ? "file" : "files"} uploaded` : "Nothing new to upload",
+         j.already && `${n(j.already)} already there`, j.album && `in “${esc(j.album)}”`].filter(Boolean).join(" · "),
+    warn: `${n(j.confirmed)} of ${plural(j.files, "file")} are in Immich. Resume to pick up where it stopped.`,
+    bad: j.missing.length ? `The other ${n(j.confirmed)} are safe in Immich. Nothing on the card was changed.` : esc(j.message),
+  }[kind];
+  const mosaic = kind === "ok" && j.samples.length
+    ? `<div class="mosaic">${j.samples.map(k => `<div class="tile"><img data-src="${esc(thumbUrl(k, v))}" alt=""></div>`).join("")}</div>` : "";
+  const primary = kind === "ok"
+    ? `<a class="btn block" href="${esc(j.album_url || S.immich?.url || "#")}" target="_blank" rel="noopener">${j.album_url ? "Open album" : "Open Immich"}</a>`
+    : cardIn ? `<button class="btn block" onclick="retry()">${kind === "warn" ? "Resume import" : "Try again"}</button>` : "";
+  const missing = kind === "bad" && j.missing.length
+    ? `<details class="more"><summary>Show the files</summary><ul>${j.missing.slice(0, 300).map(f => `<li>${esc(f)}</li>`).join("")}</ul></details>` : "";
+  const log = kind !== "ok" && j.uploader_output.length
+    ? `<details class="more"><summary>Uploader messages</summary><pre>${esc(j.uploader_output.join("\n"))}</pre></details>` : "";
+  app.innerHTML = `<div class="stage">
+    <div class="badge ${kind}">${{ok: ICON.bigcheck, warn: ICON.pause, bad: ICON.x}[kind]}</div>
+    <h1 class="headline">${headline}</h1>
+    <div class="muted" style="margin-top:8px;max-width:44ch">${sub}</div>
+    ${j.organize_error ? `<div class="note">${esc(j.organize_error)}</div>` : ""}
+    ${mosaic}${missing}${log}
+    <div class="actions">${primary}<button class="btn quiet block" onclick="dismiss()">Done</button></div>
+    ${kind === "ok" ? `<div class="muted small" style="margin-top:14px">Remove the card whenever you like.</div>` : ""}
+  </div>`;
+  hydrateThumbs(app);
 }
 
-function renderHistory(h) {
-  if (!h.length) { $("history").textContent = "No imports yet."; return; }
-  $("history").className = "box";
-  const icon = {success: "✓", cancelled: "–", failed: "✗"};
-  $("history").innerHTML = `<div class="hist">${h.map(r => `
-    <span>${icon[r.status] || "?"}</span>
-    <span>${when(r.started)} · ${n(r.shots || r.files)} ${r.shots ? "shots" : "files"}${r.album ? ` · “${esc(r.album)}”` : ""}${r.status === "success" ? "" : ` · <span style="color:var(--${r.status === "cancelled" ? "warn" : "bad"})">${esc(r.message)}</span>`}</span>
-    <span class="muted">${r.status === "success" ? n(r.files - r.already) + " new" : ""}</span>`).join("")}</div>`;
+// ---------- actions ----------
+
+function toggleDay(card, date) {
+  const s = sel[card]; s.days.has(date) ? s.days.delete(date) : s.days.add(date);
+  const y = scrollY; render(); scrollTo(0, y);
+}
+function selectAll(card, on) {
+  const c = S.cards.find(c => c.name === card);
+  sel[card].days = new Set(on ? c.sessions.map(d => d.date) : []);
+  const y = scrollY; render(); scrollTo(0, y);
 }
 
-// ---- actions ----
+function suggestions(c, s, typed) {
+  const days = c.sessions.filter(d => s.days.has(d.date)).map(d => d.date).sort();
+  const dated = !days.length ? null : days.length === 1 ? shortDay(days[0]) : `${shortDay(days[0])} – ${shortDay(days[days.length - 1])}`;
+  const q = typed.trim().toLowerCase();
+  const existing = S.albums.filter(a => !q || a.toLowerCase().includes(q)).slice(0, 8);
+  const out = existing.map(a => ({name: a, isNew: false}));
+  if (q && !S.albums.some(a => a.toLowerCase() === q)) out.push({name: typed.trim(), isNew: true});
+  else if (!q && dated && !S.albums.includes(dated)) out.unshift({name: dated, isNew: true});
+  return out;
+}
+function drawSuggestions() {
+  const c = S.cards.find(c => c.name === sheetCard), s = sel[sheetCard];
+  const typed = $("#albumInput").value;
+  $("#albumSuggest").innerHTML = suggestions(c, s, typed)
+    .map(o => `<button type="button" class="${o.isNew ? "new" : ""}" data-name="${esc(o.name)}">${esc(o.name)}</button>`).join("")
+    + (typed ? `<button type="button" data-name="">No album</button>` : "");
+  $("#albumSuggest").querySelectorAll("button").forEach(b => b.onclick = () => { $("#albumInput").value = b.dataset.name; drawSuggestions(); });
+}
+function openSheet(card, focus) {
+  sheetCard = card; const s = sel[card];
+  $("#albumInput").value = s.album; $("#tagsInput").value = s.tags; $("#rereadInput").checked = s.reread;
+  drawSuggestions();
+  $("#sheet").showModal();
+  setTimeout(() => $("#" + focus).focus(), 50);
+}
+$("#albumInput").addEventListener("input", drawSuggestions);
+$("#sheet").addEventListener("close", () => {
+  const s = sel[sheetCard];
+  s.album = $("#albumInput").value.trim(); s.tags = $("#tagsInput").value; s.reread = $("#rereadInput").checked;
+  render();
+});
+$("#sheet").addEventListener("click", e => { if (e.target === $("#sheet")) $("#sheet").close(); });
 
 async function post(req) {
   try {
-    state.job = await api("/api/import", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(req)});
-    renderJob(); renderCards(); startPolling();
-  } catch (e) { alert(e.message); loadOverview(); }
+    S.job = await api("/api/import", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(req)});
+    scrollTo(0, 0); renderStage(); followJob();
+  } catch (e) { alert(e.message); load(); }
 }
 function startImport(card) {
-  const sel = selection[card];
-  post({card, sessions: [...sel.sessions], album: sel.album.trim(),
-        tags: sel.tags.split(",").map(t => t.trim()).filter(Boolean), reread: sel.reread});
+  const s = sel[card];
+  post({card, sessions: [...s.days], album: s.album, tags: s.tags.split(",").map(t => t.trim()).filter(Boolean), reread: s.reread});
 }
-function retry() { post({...state.job.request, reread: false}); }
+function retry() { post({...S.job.request, reread: false}); }
 async function cancelImport() {
-  if (!confirm("Cancel this import? Files already uploaded stay in Immich.")) return;
-  try { await api("/api/cancel", {method: "POST"}); state.job.cancelling = true; renderJob(); } catch (e) { alert(e.message); }
+  if (!confirm("Stop this import? Anything already uploaded stays in Immich, and you can resume later.")) return;
+  try { await api("/api/cancel", {method: "POST"}); S.job.cancelling = true; renderStage(); } catch (e) { alert(e.message); }
 }
+function dismiss() { store.set("dismissed", S.job.id); document.title = "Photo Importer"; render(); watchCards(); }
 
-// Only polls while an import is running AND this tab is visible.
-function startPolling() {
-  if (pollTimer) return;
-  pollTimer = setInterval(async () => {
-    if (document.hidden) return;
-    try { state.job = await api("/api/job"); } catch { return; }
-    renderJob();
-    if (!running()) { clearInterval(pollTimer); pollTimer = null; selection = {}; loadOverview(); }
-  }, 1500);
-}
-document.addEventListener("visibilitychange", () => { if (!document.hidden && !running()) loadOverview(); });
-loadOverview();
+load();
 </script>
 </body>
 </html>

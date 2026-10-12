@@ -19,7 +19,8 @@ from datetime import datetime
 from pathlib import Path
 
 from immich import Immich, ImmichError
-from media import MEDIA_EXTS, MediaFile, Shot, capture_time, date_source, group_shots, scan_card, summarize_sessions
+from media import (MEDIA_EXTS, MediaFile, Shot, date_source, group_shots, read_header, sample, scan_card, shot_key,
+                   summarize_sessions)
 from store import Store
 
 HASH_BLOCK = 4 * 1024 * 1024
@@ -79,6 +80,8 @@ class Job:
     uploaded: int = 0
     upload_errors: int = 0
     phase_started: float = 0
+    current_shot: str = ""  # shot being read/uploaded right now (for its thumbnail)
+    samples: list[str] = field(default_factory=list)  # a few shot keys to show when done
     confirmed: int = 0
     missing: list[str] = field(default_factory=list)
     album: str = ""
@@ -108,6 +111,10 @@ class Importer:
         self.lock = threading.Lock()
         self.job: Job | None = None
         self._cancel = threading.Event()
+        # Embedded preview JPEGs (~10 KB each) for the card in the slot. Memory only:
+        # cheap to rebuild from the card, so never written to disk.
+        self.thumbs: dict[str, bytes] = {}
+        self.thumbs_owner: str | None = None
 
     # ---- cards ----
 
@@ -126,13 +133,20 @@ class Importer:
         for f in files:
             f.sha1 = known.get((f.rel, f.size, f.mtime_ns), (None, None))[0]
         shots = group_shots(files)
+        if self.thumbs_owner != key:
+            self.thumbs, self.thumbs_owner = {}, key
         learned = []
         for s in shots:
             src = date_source(s)
             s.taken = known.get((src.rel, src.size, src.mtime_ns), (None, None))[1]
-            if s.taken is None:
-                s.taken = capture_time(src)
-                learned.append((src.rel, src.size, src.mtime_ns, None, s.taken))
+            stills = src.path.suffix.lower() not in (".mp4", ".mov")
+            if s.taken is None or (stills and s.key not in self.thumbs):
+                taken, thumb = read_header(src)
+                if thumb:
+                    self.thumbs[s.key] = thumb
+                if s.taken is None:
+                    s.taken = taken
+                    learned.append((src.rel, src.size, src.mtime_ns, None, taken))
         store.save(key, learned)
         return CardView(name, root, key, store, files, shots)
 
@@ -150,9 +164,10 @@ class Importer:
                 present = self.immich.present(hashes) if hashes else {}
             except ImmichError as e:
                 present, error = {}, str(e)
-            sessions = summarize_sessions(cv.shots, set(present))
+            sessions = summarize_sessions(cv.shots, set(present), set(self.thumbs))
             out.append({
                 "name": root.name,
+                "v": hashlib.sha1(cv.key.encode()).hexdigest()[:8],  # cache-buster for thumbnail URLs
                 "busy": False,
                 "remembered": bool(hashes),
                 "files": len(cv.files),
@@ -190,6 +205,12 @@ class Importer:
         self._cancel.set()
         self.job.cancelling = True
         return True
+
+    def present_cards(self) -> list[str]:
+        return [p.name for p in self.mounted()]
+
+    def thumb(self, key: str) -> bytes | None:
+        return self.thumbs.get(key)
 
     def current(self) -> dict | None:
         return asdict(self.job) if self.job else None
@@ -241,6 +262,7 @@ class Importer:
             for f in files:
                 f.sha1 = None
         job.sessions = sorted({s.session for s in shots})
+        job.samples = sample([s.key for s in sorted(shots, key=lambda s: s.taken) if s.key in self.thumbs], 8)
         job.shots, job.files, job.bytes = len(shots), len(files), sum(f.size for f in files)
         job.hash_bytes = sum(f.size for f in files if not f.sha1)
 
@@ -296,6 +318,7 @@ class Importer:
                 continue
             if self._cancel.is_set():
                 break
+            job.current_shot = shot_key(f.rel)
             h = hashlib.sha1()
             with open(f.path, "rb") as fh:
                 while block := fh.read(HASH_BLOCK):
@@ -341,10 +364,13 @@ class Importer:
                                     stdin=subprocess.DEVNULL, text=True, errors="replace")
             threading.Thread(target=self._stop_on_cancel, args=(proc,), daemon=True).start()
             assert proc.stdout
+            order = [shot_key(f.rel) for f in sorted(files, key=lambda f: f.rel)]
             for line in proc.stdout:
                 line = line.strip()
                 if m := UPLOAD_PROGRESS.search(line):
                     job.upload_errors, job.uploaded = int(m[2]), int(m[3])
+                    # immich-go walks folders in name order, so this is roughly the photo in flight.
+                    job.current_shot = order[min(job.uploaded, len(order) - 1)]
                 elif line:
                     tail.append(line)
                     job.uploader_output = list(tail)

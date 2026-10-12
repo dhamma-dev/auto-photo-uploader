@@ -11,7 +11,10 @@ job retried and logged for months. Its code lives only in git history — do not
 resurrect its design.
 
 ## Requirements
-1. User-triggered only. No schedulers, polling loops, or background watchers.
+1. User-triggered only. No schedulers, polling loops, or background watchers on
+   the server. The page itself may poll cheap endpoints only while it's open and
+   visible: `/api/cards/present` every 3 s (a directory listing) and `/api/job`
+   every 1.5 s during an import.
 2. Idle = zero CPU and zero disk writes (a server blocked on a socket is fine).
 3. No infinite retries. One button press = one attempt; failures stop and show
    which files are missing, with a "retry missing" action.
@@ -68,7 +71,9 @@ resurrect its design.
 2. Round 2 BUILT 2026-10-11 (tested locally, not yet deployed): cancel/resume,
    real upload progress + estimates + tab title, remembered cards, sessions by
    date with partial import, album + tags per import, Open in Immich.
-   Ideas not built yet: "Immich still processing" status, per-import detail
+   Round 3 BUILT 2026-10-11: photo-first redesign (thumbnails, day cards,
+   sticky bar, progress and finish screens, card auto-detect).
+   Ideas not built yet: selecting individual photos within a day; "Immich still processing" status, per-import detail
    page, settings page, health panel, USB readers, AVCHD video.
 3. Later, separately: Lightroom-edited JPEG exports replacing the stacked JPEG;
    voice-memo captioning (Whisper + LLM → XMP sidecars); offsite backup.
@@ -84,8 +89,13 @@ resurrect its design.
 - `app/importer.py` — the job: fingerprint → check → upload missing shots →
   verify → album/tags. Cancel. Bounded history in `/data/imports/<id>/`.
 - `app/immich.py` — Immich API (users/me, bulk-upload-check, albums, tags).
-- `app/static/index.html` — the whole UI (vanilla JS; polls only while an
-  import runs and the tab is visible).
+- `app/static/index.html` — the whole UI (vanilla JS, no build). Card view: one
+  tappable card per day with a thumbnail strip, sticky Import bar, album/tags
+  sheet. Full-screen progress (ring, photo in flight) and result screens.
+  Theme follows the device's light/dark setting.
+- Thumbnails: the ~10 KB preview JPEG each camera file embeds (EXIF IFD1), read
+  alongside the capture date. Held in memory for the card in the slot only
+  (never written to disk); served by `/api/thumb?k=<shot key>`.
 - `Dockerfile`, `docker-compose.yml` (for the NUC), `.env.example`,
   `.github/workflows/image.yml` (→ `ghcr.io/dhamma-dev/photo-importer`).
 - `host/99-photo-card.rules` — udev rule installed on the NUC.

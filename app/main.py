@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
 from immich import Immich, ImmichError
@@ -68,6 +68,21 @@ def overview():
         "job": importer.current(),
         "history": importer.history(),
     }
+
+
+@app.get("/api/cards/present")
+def cards_present():
+    """Which cards are mounted: a directory listing, nothing more. The page asks this every
+    few seconds only while it's open and visible, so a newly inserted card shows up."""
+    return importer.present_cards()
+
+
+@app.get("/api/thumb")
+def thumb(k: str):
+    data = importer.thumb(k)
+    if data is None:
+        raise HTTPException(404)
+    return Response(data, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
 
 
 @app.get("/api/job")
