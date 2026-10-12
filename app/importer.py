@@ -74,8 +74,12 @@ class Job:
     bytes: int = 0
     hash_bytes: int = 0  # bytes that actually needed reading (not remembered)
     hashed_bytes: int = 0
-    already: int = 0
-    to_upload: int = 0
+    already: int = 0  # files
+    to_upload: int = 0  # files
+    # The same counts in photos (a RAW+JPEG pair is one photo), for the page.
+    shots_already: int = 0
+    shots_new: int = 0
+    shots_confirmed: int = 0
     upload_files: int = 0  # handed to immich-go (whole shots, for stacking)
     uploaded: int = 0
     upload_errors: int = 0
@@ -276,6 +280,8 @@ class Importer:
         job.to_upload = len(files) - len(present)
 
         missing_shots = [s for s in shots if any(f.rel not in present for f in s.files)]
+        job.shots_new = len(missing_shots)
+        job.shots_already = len(shots) - len(missing_shots)
         if missing_shots and not self._cancel.is_set():
             upload = [f for s in missing_shots for f in s.files]  # whole shots, so RAW+JPEG can stack
             self._set_phase(job, "uploading", f"Uploading {job.to_upload} new file(s) to Immich")
@@ -285,14 +291,16 @@ class Importer:
         present = self.immich.present(hashed)
         job.confirmed = len(present)
         job.missing = [f.rel for f in files if f.rel not in present]
+        job.shots_confirmed = sum(1 for s in shots if all(f.rel in present for f in s.files))
+        photos = lambda k: f"{k} photo" + ("" if k == 1 else "s")
 
         if self._cancel.is_set():
             job.status = "cancelled"
-            job.message = f"Cancelled. {job.confirmed} of {job.files} selected file(s) are in Immich"
+            job.message = f"Cancelled. {job.shots_confirmed} of {photos(job.shots)} are in Immich"
             return
         if job.missing:
             job.status = "failed"
-            job.message = f"{len(job.missing)} of {job.files} file(s) are NOT in Immich"
+            job.message = f"{job.shots - job.shots_confirmed} of {photos(job.shots)} " + ("isn't" if job.shots - job.shots_confirmed == 1 else "aren't") + " in Immich"
             return
 
         if job.album or job.tags:
@@ -308,7 +316,7 @@ class Importer:
                 # The photos are safe; only the organizing failed.
                 job.organize_error = f"Photos are safe in Immich, but organizing failed: {e}"
         # Only now: the page stops following the job as soon as status leaves "running".
-        job.message = f"All {job.files} file(s) confirmed in Immich"
+        job.message = f"All {photos(job.shots)} confirmed in Immich"
         job.status = "success"
 
     def _hash(self, job: Job, cv: CardView, files: list[MediaFile]) -> None:

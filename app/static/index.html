@@ -315,8 +315,9 @@ function renderCard(c) {
   const allOn = c.sessions.every(d => s.days.has(d.date));
   return `
     <div class="cardhead">
-      <div><div class="muted small">SD card · ${size(c.bytes)}</div>
-        <h1>${plural(c.shots, "photo")} from ${plural(c.sessions.length, "day")}</h1></div>
+      <div><div class="muted small">SD card · ${size(c.bytes)} · ${plural(c.files, "file")}</div>
+        <h1>${plural(c.shots, "photo")} from ${plural(c.sessions.length, "day")}</h1>
+        ${c.files !== c.shots ? `<div class="muted small" style="margin-top:2px">A RAW + JPEG pair counts as one photo</div>` : ""}</div>
       <button class="link" onclick="selectAll('${esc(c.name)}', ${!allOn})">${allOn ? "Select none" : "Select all"}</button>
     </div>
     ${c.all_in_immich ? `<div class="safe">${ICON.check.replace('stroke-width="3"', 'stroke-width="3" width="18" height="18"')}Everything on this card is already safe in Immich</div>` : ""}
@@ -363,7 +364,8 @@ function renderRecent() {
   return `<section class="recent"><h3>Recent imports</h3><ol>${h.map(r => {
     const k = kind(r);
     const when = new Date(r.started * 1000).toLocaleString(undefined, {month: "short", day: "numeric", hour: "numeric", minute: "2-digit"});
-    const what = r.status === "success" ? `${plural(r.shots || r.files, "photo")}${r.album ? ` · ${esc(r.album)}` : ""}` : esc(r.message);
+    const count = r.shots ? plural(r.shots, "photo") : plural(r.files, "file");  // first-version records only counted files
+    const what = r.status === "success" ? `${count}${r.album ? ` · ${esc(r.album)}` : ""}` : esc(r.message);
     return `<li><span class="ico ${k}">${mark[k]}</span><span class="what">${what}</span><span class="muted small">${when}</span></li>`;
   }).join("")}</ol></section>`;
 }
@@ -443,17 +445,17 @@ function renderStage() {
   document.title = `${{ok: "Done", warn: "Cancelled", bad: "Needs attention"}[kind]} · Photo Importer`;
   const v = (S.cards || []).find(c => c.name === j.card)?.v;
   const cardIn = (S.cards || []).some(c => c.name === j.card);
-  const uploaded = j.files - j.already;
+  const legacy = j.shots_new === undefined;  // record from before photo counts existed
   const headline = {
     ok: `${plural(j.shots, "photo")} safe in Immich`,
     warn: "Import paused",
-    bad: j.missing.length ? `${plural(j.missing.length, "file")} didn't make it` : "The import stopped",
+    bad: j.missing.length ? `${plural(legacy ? j.missing.length : j.shots - j.shots_confirmed, legacy ? "file" : "photo")} didn't make it` : "The import stopped",
   }[kind];
   const sub = {
-    ok: [uploaded ? `${n(uploaded)} new ${uploaded === 1 ? "file" : "files"} uploaded` : "Nothing new to upload",
-         j.already && `${n(j.already)} already there`, j.album && `in “${esc(j.album)}”`].filter(Boolean).join(" · "),
-    warn: `${n(j.confirmed)} of ${plural(j.files, "file")} are in Immich. Resume to pick up where it stopped.`,
-    bad: j.missing.length ? `The other ${n(j.confirmed)} are safe in Immich. Nothing on the card was changed.` : esc(j.message),
+    ok: legacy ? esc(j.message) : [j.shots_new ? `${plural(j.shots_new, "new photo")} uploaded` : "Nothing new to upload",
+         j.shots_already && `${n(j.shots_already)} already there`, j.album && `in “${esc(j.album)}”`].filter(Boolean).join(" · "),
+    warn: legacy ? esc(j.message) : `${n(j.shots_confirmed)} of ${plural(j.shots, "photo")} are in Immich. Resume to pick up where it stopped.`,
+    bad: j.missing.length && !legacy ? `The other ${plural(j.shots_confirmed, "photo")} are safe in Immich. Nothing on the card was changed.` : esc(j.message),
   }[kind];
   const mosaic = kind === "ok" && j.samples.length
     ? `<div class="mosaic">${j.samples.map(k => `<div class="tile"><img data-src="${esc(thumbUrl(k, v))}" alt=""></div>`).join("")}</div>` : "";
@@ -461,7 +463,7 @@ function renderStage() {
     ? `<a class="btn block" href="${esc(j.album_url || S.immich?.url || "#")}" target="_blank" rel="noopener">${j.album_url ? "Open album" : "Open Immich"}</a>`
     : cardIn ? `<button class="btn block" onclick="retry()">${kind === "warn" ? "Resume import" : "Try again"}</button>` : "";
   const missing = kind === "bad" && j.missing.length
-    ? `<details class="more"><summary>Show the files</summary><ul>${j.missing.slice(0, 300).map(f => `<li>${esc(f)}</li>`).join("")}</ul></details>` : "";
+    ? `<details class="more"><summary>Show the missing files</summary><ul>${j.missing.slice(0, 300).map(f => `<li>${esc(f)}</li>`).join("")}</ul></details>` : "";
   const log = kind !== "ok" && j.uploader_output.length
     ? `<details class="more"><summary>Uploader messages</summary><pre>${esc(j.uploader_output.join("\n"))}</pre></details>` : "";
   app.innerHTML = `<div class="stage">
